@@ -8,7 +8,7 @@ version = "0.1.1"
 description = "CLI utility that summarizes single files into teaching briefs using DSPy"
 authors = [{ name = "DSPy File Maintainers" }]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10,<3.12"
 dependencies = [
     "dspy>=2.6",
     "pytest>=8.4.2",
