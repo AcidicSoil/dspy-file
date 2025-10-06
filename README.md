@@ -23,9 +23,29 @@ The implementation mirrors the multi-file tutorial (`tutorials/multi-llmtxt_gene
 Install the Python dependencies if you have not already:
 
 ```bash
-uv pip install dspy python-dotenv
-ollama pull hf.co/Mungert/osmosis-mcp-4b-GGUF:Q4_K_M
+uv init
 
+uv venv -p 3.12
+source .venv/bin/activate
+```
+
+```bash
+uv pip install dspy python-dotenv
+```
+
+```bash
+uv sync
+```
+
+```bash
+ollama pull hf.co/Mungert/osmosis-mcp-4b-GGUF:Q4_K_M
+```
+
+```bash
+uv pip install dspyteach
+```
+
+```bash
 # install the package locally (editable or regular)
 uv pip install -e .
 ```
