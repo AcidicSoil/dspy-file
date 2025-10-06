@@ -4,3 +4,9 @@
 *.env
 .venv/
 AGENTS.md
+.pytest_cache
+__pycache__
+.browser-echo-mcp.json
+uv.lock
+dspyteach.egg-info/
+dist/

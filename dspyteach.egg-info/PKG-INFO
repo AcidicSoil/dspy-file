@@ -11,6 +11,7 @@ Classifier: Topic :: Software Development :: Code Generators
 Requires-Python: >=3.12
 Description-Content-Type: text/markdown
 Requires-Dist: dspy>=2.6
+Requires-Dist: pytest>=8.4.2
 Requires-Dist: python-dotenv>=1.0
 
 # dspyteach – DSPy File Teaching Analyzer
@@ -38,9 +39,29 @@ The implementation mirrors the multi-file tutorial (`tutorials/multi-llmtxt_gene
 Install the Python dependencies if you have not already:
 
 ```bash
-uv pip install dspy python-dotenv
-ollama pull hf.co/Mungert/osmosis-mcp-4b-GGUF:Q4_K_M
+uv init
 
+uv venv -p 3.12
+source .venv/bin/activate
+```
+
+```bash
+uv pip install dspy python-dotenv
+```
+
+```bash
+uv sync
+```
+
+```bash
+ollama pull hf.co/Mungert/osmosis-mcp-4b-GGUF:Q4_K_M
+```
+
+```bash
+uv pip install dspyteach
+```
+
+```bash
 # install the package locally (editable or regular)
 uv pip install -e .
 ```
@@ -96,7 +117,7 @@ The repository is configured for standard Python packaging via `pyproject.toml` 
 # (optional) bump the version before you publish
 uv version --bump patch
 
-# build the source distribution and wheel; artifacts land in ../dist/
+# build the source distribution and wheel; artifacts land in dist/
 uv build --no-sources
 
 # publish to PyPI (or TestPyPI) once you have an API token
@@ -125,7 +146,7 @@ GitHub Actions users can trigger `.github/workflows/publish-testpypi.yml` to bui
 
 - Checks out the repository (ensuring `pyproject.toml` is present as required by uv publish).
 - Installs uv with Python 3.12.
-- Runs `uv build --no-sources` inside `dspy-file/`.
+ - Runs `uv build --no-sources` from the repository root.
 - Publishes with `uv publish --index testpypi dist/*` using the `TEST_PYPI_TOKEN` secret.
 
 See the [uv publishing guide](https://docs.astral.sh/uv/guides/package/#publishing-your-package) for the official note about requiring a checkout when using `--index`.

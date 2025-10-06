@@ -101,7 +101,7 @@ The repository is configured for standard Python packaging via `pyproject.toml` 
 # (optional) bump the version before you publish
 uv version --bump patch
 
-# build the source distribution and wheel; artifacts land in ../dist/
+# build the source distribution and wheel; artifacts land in dist/
 uv build --no-sources
 
 # publish to PyPI (or TestPyPI) once you have an API token
@@ -130,7 +130,7 @@ GitHub Actions users can trigger `.github/workflows/publish-testpypi.yml` to bui
 
 - Checks out the repository (ensuring `pyproject.toml` is present as required by uv publish).
 - Installs uv with Python 3.12.
-- Runs `uv build --no-sources` inside `dspy-file/`.
+ - Runs `uv build --no-sources` from the repository root.
 - Publishes with `uv publish --index testpypi dist/*` using the `TEST_PYPI_TOKEN` secret.
 
 See the [uv publishing guide](https://docs.astral.sh/uv/guides/package/#publishing-your-package) for the official note about requiring a checkout when using `--index`.
