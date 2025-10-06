@@ -29,6 +29,9 @@ The implementation mirrors the multi-file tutorial (`tutorials/multi-llmtxt_gene
 - (Optional) `.env` file for any additional DSPy configuration; `dotenv` is loaded automatically
 
 Install the Python dependencies if you have not already:
+**you dont need all of these commands to correctly install**
+
+### I added multiple install commands and will cleanup later
 
 ```bash
 uv init
