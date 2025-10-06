@@ -1,5 +1,13 @@
 # dspyteach – DSPy File Teaching Analyzer
 
+[![PyPI](https://img.shields.io/pypi/v/dspyteach.svg)](https://pypi.org/project/dspyteach/)
+[![Downloads](https://img.shields.io/pypi/dm/dspyteach.svg)](https://pypi.org/project/dspyteach/)
+[![Python](https://img.shields.io/pypi/pyversions/dspyteach.svg)](https://pypi.org/project/dspyteach/)
+[![License](https://img.shields.io/pypi/l/dspyteach.svg)](LICENSE)
+[![TestPyPI](https://img.shields.io/badge/TestPyPI-dspyteach-informational)](https://test.pypi.org/project/dspyteach/)
+[![Tests](https://github.com/AcidicSoil/dspy-file/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/AcidicSoil/dspy-file/actions/workflows/release.yml)
+[![CI](https://github.com/AcidicSoil/dspy-file/actions/workflows/release.yml/badge.svg)](…)
+
 This folder contains a DSPy-powered CLI that analyzes source files (one or many) and produces teaching briefs. Each run captures:
 
 - an overview of the file and its major sections
