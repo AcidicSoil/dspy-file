@@ -1,6 +1,8 @@
 # dspyteach – DSPy File Teaching Analyzer
 
-[![PyPI](https://img.shields.io/pypi/v/dspyteach.svg)](https://pypi.org/project/dspyteach/)
+---
+
+[![PyPI - Version](https://img.shields.io/pypi/v/dspyteach?label=pypi&include_prereleases&cacheSeconds=300)](https://pypi.org/project/dspyteach/)
 [![Downloads](https://img.shields.io/pypi/dm/dspyteach.svg)](https://pypi.org/project/dspyteach/)
 [![Python](https://img.shields.io/pypi/pyversions/dspyteach.svg)](https://pypi.org/project/dspyteach/)
 [![License](https://img.shields.io/pypi/l/dspyteach.svg)](LICENSE)
@@ -8,7 +10,11 @@
 [![Tests](https://github.com/AcidicSoil/dspy-file/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/AcidicSoil/dspy-file/actions/workflows/release.yml)
 [![CI](https://github.com/AcidicSoil/dspy-file/actions/workflows/release.yml/badge.svg)](…)
 
-This folder contains a DSPy-powered CLI that analyzes source files (one or many) and produces teaching briefs. Each run captures:
+---
+
+## DSPy-powered CLI that analyzes source files (one or many) and produces teaching briefs
+
+**Each run captures:**
 
 - an overview of the file and its major sections
 - key teaching points, workflows, and pitfalls highlighted in the material
@@ -20,6 +26,8 @@ The implementation mirrors the multi-file tutorial (`tutorials/multi-llmtxt_gene
 - `dspy_file/file_analyzer.py` – the main DSPy module that orchestrates overview, teaching extraction, and report composition. It now wraps the final report stage with `dspy.Refine`, pushing for 450–650+ word briefs.
 - `dspy_file/file_helpers.py` – utilities for loading files and rendering the markdown brief
 - `dspy_file/analyze_file_cli.py` – command line entry point that configures the local model and prints results. It can walk directories, apply glob filters, and batch-generate briefs.
+
+---
 
 ## Requirements
 
@@ -47,6 +55,8 @@ uv pip install dspy python-dotenv
 ```bash
 uv sync
 ```
+
+#### will add options to use your preferred model of choice later
 
 ```bash
 ollama pull hf.co/Mungert/osmosis-mcp-4b-GGUF:Q4_K_M
