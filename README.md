@@ -23,7 +23,7 @@ The implementation mirrors the multi-file tutorial (`tutorials/multi-llmtxt_gene
 
 ## Requirements
 
-- Python 3.12+
+- Python 3.10-3.12+
 - DSPy installed in the environment
 - Ollama running locally with the model `hf.co/Mungert/osmosis-mcp-4b-GGUF:Q4_K_M` available
 - (Optional) `.env` file for any additional DSPy configuration; `dotenv` is loaded automatically
