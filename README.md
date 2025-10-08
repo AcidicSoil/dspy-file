@@ -2,13 +2,12 @@
 
 ---
 
-[![PyPI - Version](https://img.shields.io/pypi/v/dspyteach?label=pypi&include_prereleases&cacheSeconds=300)](https://pypi.org/project/dspyteach/)
-[![Downloads](https://img.shields.io/pypi/dm/dspyteach.svg)](https://pypi.org/project/dspyteach/)
-[![Python](https://img.shields.io/pypi/pyversions/dspyteach.svg)](https://pypi.org/project/dspyteach/)
-[![License](https://img.shields.io/pypi/l/dspyteach.svg)](LICENSE)
-[![TestPyPI](https://img.shields.io/badge/TestPyPI-dspyteach-informational)](https://test.pypi.org/project/dspyteach/)
-[![Tests](https://github.com/AcidicSoil/dspy-file/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/AcidicSoil/dspy-file/actions/workflows/release.yml)
-[![CI](https://github.com/AcidicSoil/dspy-file/actions/workflows/release.yml/badge.svg)](…)
+[![PyPI](https://img.shields.io/pypi/v/dspyteach.svg?include_prereleases&cacheSeconds=300&t=1)](https://pypi.org/project/dspyteach/)
+[![Downloads](https://img.shields.io/pypi/dm/dspyteach.svg?cacheSeconds=300)](https://pypi.org/project/dspyteach/)
+[![Python](https://img.shields.io/pypi/pyversions/dspyteach.svg?cacheSeconds=300)](https://pypi.org/project/dspyteach/)
+[![License](https://img.shields.io/pypi/l/dspyteach.svg?cacheSeconds=300)](LICENSE)
+[![TestPyPI](https://img.shields.io/badge/TestPyPI-dspyteach-informational?cacheSeconds=300)](https://test.pypi.org/project/dspyteach/)
+[![Release workflow](https://github.com/AcidicSoil/dspy-file/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/AcidicSoil/dspy-file/actions/workflows/release.yml)
 
 ---
 
