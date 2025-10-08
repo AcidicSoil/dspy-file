@@ -65,11 +65,6 @@ ollama pull hf.co/Mungert/osmosis-mcp-4b-GGUF:Q4_K_M
 uv pip install dspyteach
 ```
 
-```bash
-# install the package locally (editable or regular)
-uv pip install -e .
-```
-
 ## Usage
 
 Run the CLI to extract a teaching brief from a single file:
