@@ -6,6 +6,8 @@ import os
 import subprocess
 import sys
 from enum import Enum
+from urllib import error as urlerror
+from urllib import request
 from pathlib import Path
 from typing import Any, Final
 
@@ -16,6 +18,11 @@ from .file_analyzer import FileTeachingAnalyzer
 from .file_helpers import collect_source_paths, read_file_content, render_prediction
 from .prompts import PromptTemplate, list_bundled_prompts, load_prompt_text
 from .refactor_analyzer import FileRefactorAnalyzer
+
+try:  # dspy depends on litellm; guard in case import path changes.
+    from litellm.exceptions import InternalServerError as LiteLLMInternalServerError
+except Exception:  # pragma: no cover - defensive fallback if litellm API shifts
+    LiteLLMInternalServerError = None  # type: ignore[assignment]
 
 
 class Provider(str, Enum):
@@ -93,6 +100,29 @@ def configure_model(
     provider_label = "LM Studio" if provider is Provider.LMSTUDIO else provider.value
     suffix = f" via {api_base}" if provider.is_openai_compatible and api_base else ""
     print(f"Configured DSPy LM ({provider_label}): {model_name}{suffix}")
+
+
+class ProviderConnectivityError(RuntimeError):
+    """Raised when a provider cannot be reached before running analysis."""
+
+
+def _probe_openai_provider(api_base: str, api_key: str | None, *, timeout: float = 3.0) -> None:
+    """Make a lightweight request against an OpenAI-compatible endpoint."""
+
+    endpoint = api_base.rstrip("/") + "/models"
+    headers = {"Authorization": f"Bearer {api_key or ''}"}
+    request_obj = request.Request(endpoint, headers=headers, method="GET")
+
+    try:
+        with request.urlopen(request_obj, timeout=timeout):
+            return
+    except urlerror.HTTPError as exc:
+        raise ProviderConnectivityError(
+            f"Endpoint {endpoint} responded with HTTP {exc.code}: {exc.reason}"
+        ) from exc
+    except urlerror.URLError as exc:
+        reason = getattr(exc, "reason", exc)
+        raise ProviderConnectivityError(f"Failed to reach {endpoint}: {reason}") from exc
 
 
 def stop_ollama_model(model_name: str) -> None:
@@ -423,6 +453,18 @@ def main(argv: list[str] | None = None) -> int:
     if provider is Provider.LMSTUDIO and not api_key:
         api_key = "lm-studio"
 
+    if provider is Provider.LMSTUDIO and api_base:
+        try:
+            _probe_openai_provider(api_base, api_key)
+        except ProviderConnectivityError as exc:
+            print("Unable to reach the LM Studio server before starting analysis.")
+            print(f"Details: {exc}")
+            print(
+                "Start LM Studio's local API server (Developer tab → Start Server or "
+                "`lms server start`) and re-run, or pass --api-base to match the running port."
+            )
+            return 1
+
     configure_model(provider, model_name, api_base=api_base, api_key=api_key)
     stop_model: str | None = model_name if provider is Provider.OLLAMA else None
 
@@ -454,17 +496,32 @@ def main(argv: list[str] | None = None) -> int:
                     if segment.strip()
                 )
             exclude_dirs = parsed or None
-        exit_code = analyze_path(
-            args.path,
-            raw=args.raw,
-            recursive=not args.non_recursive,
-            include_globs=args.include_globs,
-            confirm_each=args.confirm_each,
-            exclude_dirs=exclude_dirs,
-            output_dir=output_dir,
-            mode=analysis_mode,
-            prompt_text=prompt_text,
-        )
+        try:
+            exit_code = analyze_path(
+                args.path,
+                raw=args.raw,
+                recursive=not args.non_recursive,
+                include_globs=args.include_globs,
+                confirm_each=args.confirm_each,
+                exclude_dirs=exclude_dirs,
+                output_dir=output_dir,
+                mode=analysis_mode,
+                prompt_text=prompt_text,
+            )
+        except Exception as exc:
+            if LiteLLMInternalServerError and isinstance(exc, LiteLLMInternalServerError):
+                message = str(exc)
+                if exc.__cause__:
+                    message = f"{message} (cause: {exc.__cause__})"
+                print("Model request failed while generating the report.")
+                print(f"Details: {message}")
+                if provider is Provider.LMSTUDIO:
+                    print(
+                        "Confirm the LM Studio server is running and reachable at "
+                        f"{api_base}."
+                    )
+                return 1
+            raise
     except (FileNotFoundError, IsADirectoryError) as exc:
         parser.print_usage(sys.stderr)
         print(f"{parser.prog}: error: {exc}", file=sys.stderr)

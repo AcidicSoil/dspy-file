@@ -88,6 +88,10 @@ export DSPYTEACH_API_BASE=http://localhost:1234/v1
 dspyteach path/to/project
 ```
 
+LM Studio must expose its local server before you run the CLI. Start it from the Developer tab inside the LM Studio app or via `lms server start` (see `docs/lm-studio-provider.md` for details); otherwise the CLI will exit early with a connection warning.
+
+**WSL note:** When LM Studio runs on Windows but `dspyteach` runs from WSL, toggle *Serve on local network* in LM Studio's Developer settings so the API binds to `0.0.0.0`. Then point `--api-base` at the Windows host IP (for example `http://<host-ip>:1234/v1`) instead of `localhost`.
+
 For hosted OpenAI-compatible services, set `--provider openai`, supply `--api-base` if needed, and pass an API key either through `--api-key`, `DSPYTEACH_API_KEY`, or the standard `OPENAI_API_KEY`. To keep a local Ollama model running after the CLI finishes, add `--keep-provider-alive`.
 
 ## Usage

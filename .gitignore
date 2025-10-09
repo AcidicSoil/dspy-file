@@ -11,10 +11,12 @@ uv.lock
 dspyteach.egg-info/
 dist/
 /codefetch/
-.taskmaster/owner-docs
+.taskmaster/docs/owner-docs/
+.taskmaster/docs/.ai_context/
 !.taskmaster/
 /.cursor/
 scripts/
+
 # Logs
 logs
 *.log
