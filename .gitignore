@@ -1,6 +1,6 @@
 /logs/
 /temp/
-/example-data/
+
 *.env
 .venv/
 
@@ -10,12 +10,10 @@ __pycache__
 uv.lock
 dspyteach.egg-info/
 dist/
-/codefetch/
+codefetch/
 .taskmaster/docs/owner-docs/
-.taskmaster/docs/.ai_context/
-!.taskmaster/
+!.taskmaster/docs/.ai_context/
 /.cursor/
-scripts/
 
 # Logs
 logs
