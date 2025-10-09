@@ -85,9 +85,23 @@ Need to double-check files before the model runs? Add `--confirm-each` (alias `-
 
 To omit specific subdirectories entirely, pass one or more `--exclude-dirs` options. Each value can list comma-separated relative paths (for example `--exclude-dirs "build/,venv/" --exclude-dirs data/raw`). The analyzer ignores any files whose path begins with the provided prefixes.
 
+Prefer short flags? The common options include `-r` (`--raw`), `-m` (`--mode`), `-nr` (`--non-recursive`), `-g` (`--glob`), `-i` (`--confirm-each`), `-ed` (`--exclude-dirs`), and `-o` (`--output-dir`). Mix and match them as needed.
+
+Want to scaffold refactor prompt templates instead of teaching briefs? Switch the mode:
+
+```bash
+dspyteach path/to/project --mode refactor --glob "**/*.md"
+```
+
+The CLI reuses the same file resolution pipeline but feeds each document through the bundled `dspy-file_refactor-prompt_template.md` instructions (packaged under `dspy_file/prompts/`), saving `.refactor.md` files alongside the teaching reports. Teaching briefs remain the default (`--mode teach`), so existing workflows continue to work unchanged.
+
+When multiple templates live in `dspy_file/prompts/`, the refactor mode surfaces a picker so you can choose which one to use. You can also point at a specific template explicitly with `-p/--prompt`, passing either a bundled name (`-p refactor_prompt_template`) or an absolute path to your own Markdown prompt.
+
+Each run only executes the analyzer for the chosen mode. When you pass `--mode refactor` the teaching inference pipeline stays idle, and you can alias the command (for example `alias dspyrefactor='dspyteach --mode refactor'`) if you prefer refactor templates to be the default in your shell.
+
 To change where reports land, supply `--output-dir /path/to/reports`. When omitted the CLI writes to `dspy_file/data/` next to the module. Every run prints the active model name and the resolved output directory before analysis begins so you can confirm the environment at a glance. For backwards compatibility the installer also registers `dspy-file-teaching` as an alias.
 
-Each analyzed file is saved under the chosen directory with a slugged name (e.g. `src__main.teaching.md`). If a file already exists, the CLI appends a numeric suffix to avoid overwriting previous runs.
+Each analyzed file is saved under the chosen directory with a slugged name (e.g. `src__main.teaching.md` or `src__main.refactor.md`). If a file already exists, the CLI appends a numeric suffix to avoid overwriting previous runs.
 
 The generated brief is markdown that mirrors the source material:
 

@@ -38,6 +38,8 @@ def test_analyze_path_writes_markdown(tmp_path: Path) -> None:
             confirm_each=False,
             exclude_dirs=None,
             output_dir=output_dir,
+            mode=analyze_file_cli.AnalysisMode.TEACH,
+            prompt_text=None,
         )
 
     assert exit_code == 0
@@ -69,6 +71,8 @@ def test_analyze_path_confirm_each_skips_when_declined(confirm_mock: mock.Mock, 
             confirm_each=True,
             exclude_dirs=None,
             output_dir=output_dir,
+            mode=analyze_file_cli.AnalysisMode.TEACH,
+            prompt_text=None,
         )
 
     assert exit_code == 0
@@ -103,6 +107,8 @@ def test_analyze_path_respects_exclude_dirs(tmp_path: Path) -> None:
             confirm_each=False,
             exclude_dirs=["skip"],
             output_dir=output_dir,
+            mode=analyze_file_cli.AnalysisMode.TEACH,
+            prompt_text=None,
         )
 
     assert exit_code == 0
@@ -110,3 +116,105 @@ def test_analyze_path_respects_exclude_dirs(tmp_path: Path) -> None:
     generated = list(output_dir.glob("*.md"))
     assert len(generated) == 1
     assert "ignore" not in generated[0].read_text(encoding="utf-8")
+
+
+def test_analyze_path_refactor_mode_uses_refactor_analyzer(tmp_path: Path) -> None:
+    source = tmp_path / "example.md"
+    source.write_text("# Title\n\nSome content", encoding="utf-8")
+
+    output_dir = tmp_path / "reports"
+
+    class DummyRefactorAnalyzer:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, str]] = []
+
+        def __call__(self, *, file_path: str, file_content: str):  # type: ignore[override]
+            self.calls.append((file_path, file_content))
+            return SimpleNamespace(template_markdown="# Template\n\nValue.")
+
+    dummy = DummyRefactorAnalyzer()
+
+    with mock.patch.object(
+        analyze_file_cli, "FileRefactorAnalyzer", return_value=dummy
+    ) as refactor_cls:
+        exit_code = analyze_file_cli.analyze_path(
+            str(source),
+            raw=False,
+            recursive=True,
+            include_globs=None,
+            confirm_each=False,
+            exclude_dirs=None,
+            output_dir=output_dir,
+            mode=analyze_file_cli.AnalysisMode.REFACTOR,
+            prompt_text="Custom prompt",
+        )
+
+    assert exit_code == 0
+    assert dummy.calls == [(str(source), "# Title\n\nSome content")]
+    generated_files = list(output_dir.glob("*.refactor.md"))
+    assert len(generated_files) == 1
+    assert generated_files[0].read_text(encoding="utf-8").endswith("Value.\n")
+    refactor_cls.assert_called_once()
+    assert refactor_cls.call_args.kwargs["template_text"] == "Custom prompt"
+
+
+def test_resolve_prompt_text_with_menu(tmp_path: Path) -> None:
+    prompt_one = tmp_path / "first.md"
+    prompt_two = tmp_path / "second.md"
+    prompt_one.write_text("First template", encoding="utf-8")
+    prompt_two.write_text("Second template", encoding="utf-8")
+
+    options = [
+        analyze_file_cli.PromptTemplate(name="first", path=prompt_one),
+        analyze_file_cli.PromptTemplate(name="second", path=prompt_two),
+    ]
+
+    with mock.patch.object(
+        analyze_file_cli, "list_bundled_prompts", return_value=options
+    ), mock.patch("builtins.input", side_effect=["2"]):
+        text = analyze_file_cli._resolve_prompt_text(None)
+
+    assert text == "Second template"
+
+
+def test_resolve_prompt_text_with_explicit_path(tmp_path: Path) -> None:
+    prompt_path = tmp_path / "custom.md"
+    prompt_path.write_text("Custom prompt text", encoding="utf-8")
+
+    text = analyze_file_cli._resolve_prompt_text(str(prompt_path))
+
+    assert text == "Custom prompt text"
+
+
+def test_parser_short_options_are_supported() -> None:
+    parser = analyze_file_cli.build_parser()
+    args = parser.parse_args(
+        [
+            "sample.md",
+            "-r",
+            "-m",
+            "refactor",
+            "-nr",
+            "-g",
+            "**/*.py",
+            "-g",
+            "**/*.md",
+            "-i",
+            "-ed",
+            "skip,temp",
+            "-o",
+            "reports",
+            "-p",
+            "custom-prompt",
+        ]
+    )
+
+    assert args.path == "sample.md"
+    assert args.raw is True
+    assert args.mode == "refactor"
+    assert args.non_recursive is True
+    assert args.include_globs == ["**/*.py", "**/*.md"]
+    assert args.confirm_each is True
+    assert args.exclude_dirs == ["skip,temp"]
+    assert args.output_dir == "reports"
+    assert args.prompt == "custom-prompt"

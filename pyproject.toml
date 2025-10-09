@@ -29,6 +29,9 @@ dspy-file-teaching = "dspy_file.analyze_file_cli:main"
 [tool.setuptools.packages.find]
 include = ["dspy_file", "dspy_file.*"]
 
+[tool.setuptools.package-data]
+"dspy_file" = ["data/*.md", "prompts/*.md"]
+
 [[tool.uv.index]]
 name = "testpypi"
 url = "https://test.pypi.org/simple/"

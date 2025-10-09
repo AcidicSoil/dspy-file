@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import sys
 import subprocess
+from enum import Enum
 from pathlib import Path
 
 import dspy
@@ -11,6 +12,8 @@ from dotenv import load_dotenv
 
 from .file_analyzer import FileTeachingAnalyzer
 from .file_helpers import collect_source_paths, read_file_content, render_prediction
+from .prompts import PromptTemplate, list_bundled_prompts, load_prompt_text
+from .refactor_analyzer import FileRefactorAnalyzer
 
 MODEL_NAME = "hf.co/unsloth/Qwen3-4B-Thinking-2507-GGUF:Q4_K_M"
 OLLAMA_BASE_URL = "http://localhost:11434"
@@ -46,12 +49,65 @@ def stop_ollama_model(model_name: str) -> None:
         print("Warning: ollama command not found while attempting to stop the model.")
 
 
+class AnalysisMode(str, Enum):
+    TEACH = "teach"
+    REFACTOR = "refactor"
+
+    @property
+    def render_key(self) -> str:
+        return self.value
+
+    @property
+    def output_description(self) -> str:
+        return "teaching report" if self is AnalysisMode.TEACH else "refactor template"
+
+    @property
+    def file_suffix(self) -> str:
+        return ".teaching.md" if self is AnalysisMode.TEACH else ".refactor.md"
+
+
+def _prompt_for_template_selection(prompts: list[PromptTemplate]) -> PromptTemplate:
+    while True:
+        print("Available prompt templates:")
+        for idx, template in enumerate(prompts, 1):
+            print(f"  [{idx}] {template.name} ({template.path.name})")
+        try:
+            choice = input(f"Select a template [1-{len(prompts)}] (default 1): ")
+        except EOFError:
+            print("No selection provided; using first template.")
+            return prompts[0]
+
+        stripped = choice.strip()
+        if not stripped:
+            return prompts[0]
+        if stripped.isdigit():
+            idx = int(stripped)
+            if 1 <= idx <= len(prompts):
+                return prompts[idx - 1]
+        print(f"Please enter a number between 1 and {len(prompts)}.")
+
+
+def _resolve_prompt_text(prompt_arg: str | None) -> str:
+    if prompt_arg:
+        return load_prompt_text(prompt_arg)
+
+    prompts = list_bundled_prompts()
+    if not prompts:
+        raise FileNotFoundError("No prompt templates found in prompts directory.")
+    if len(prompts) == 1:
+        return prompts[0].path.read_text(encoding="utf-8")
+
+    selected = _prompt_for_template_selection(prompts)
+    return selected.path.read_text(encoding="utf-8")
+
+
 def _write_output(
     source_path: Path,
     content: str,
     *,
     root: Path | None = None,
     output_dir: Path = DEFAULT_OUTPUT_DIR,
+    suffix: str = ".teaching.md",
 ) -> Path:
     """Persist analyzer output under the data directory with de-duplicated file names."""
 
@@ -64,12 +120,14 @@ def _write_output(
 
     slug_parts = [part.replace("/", "_") for part in relative_path.with_suffix("").parts]
     slug = "__".join(slug_parts) if slug_parts else source_path.stem
-    base_name = f"{slug}.teaching.md"
+    base_name = f"{slug}{suffix}"
     output_path = output_dir / base_name
 
     counter = 1
     while output_path.exists():
-        output_path = output_dir / f"{slug}.teaching-{counter}.md"
+        stem = Path(base_name).stem
+        extension = Path(base_name).suffix
+        output_path = output_dir / f"{stem}-{counter}{extension}"
         counter += 1
 
     if not content.endswith("\n"):
@@ -104,16 +162,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("path", help="Path to the file to analyze")
     parser.add_argument(
+        "-r",
         "--raw",
         action="store_true",
         help="Print raw DSPy prediction repr instead of formatted text",
     )
     parser.add_argument(
+        "-m",
+        "--mode",
+        choices=[mode.value for mode in AnalysisMode],
+        default=AnalysisMode.TEACH.value,
+        help="Select output mode: teaching report (default) or refactor prompt template.",
+    )
+    parser.add_argument(
+        "-nr",
         "--non-recursive",
         action="store_true",
         help="When path is a directory, only analyze files in the top-level directory",
     )
     parser.add_argument(
+        "-g",
         "--glob",
         action="append",
         dest="include_globs",
@@ -123,6 +191,16 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "-p",
+        "--prompt",
+        dest="prompt",
+        default=None,
+        help=(
+            "Prompt template to use in refactor mode. Provide a name, bundled filename, or path."
+        ),
+    )
+    parser.add_argument(
+        "-i",
         "--confirm-each",
         "--interactive",
         action="store_true",
@@ -130,6 +208,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Prompt for confirmation before analyzing each file.",
     )
     parser.add_argument(
+        "-ed",
         "--exclude-dirs",
         action="append",
         dest="exclude_dirs",
@@ -139,6 +218,7 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "-o",
         "--output-dir",
         dest="output_dir",
         default=None,
@@ -158,6 +238,8 @@ def analyze_path(
     confirm_each: bool,
     exclude_dirs: list[str] | None,
     output_dir: Path,
+    mode: AnalysisMode,
+    prompt_text: str | None = None,
 ) -> int:
     """Run the DSPy pipeline and render results to stdout for one or many files."""
 
@@ -173,7 +255,11 @@ def analyze_path(
         print(f"No files found under {resolved}")
         return 0
 
-    analyzer = FileTeachingAnalyzer()
+    analyzer: dspy.Module
+    if mode is AnalysisMode.TEACH:
+        analyzer = FileTeachingAnalyzer()
+    else:
+        analyzer = FileRefactorAnalyzer(template_text=prompt_text)
     root: Path | None = resolved if resolved.is_dir() else None
 
     exit_code = 0
@@ -196,7 +282,7 @@ def analyze_path(
             output_text = repr(prediction)
             print(output_text)
         else:
-            output_text = render_prediction(prediction)
+            output_text = render_prediction(prediction, mode=mode.render_key)
             print(output_text, end="")
 
         output_path = _write_output(
@@ -204,8 +290,9 @@ def analyze_path(
             output_text,
             root=root,
             output_dir=output_dir,
+            suffix=mode.file_suffix,
         )
-        print(f"Saved report to {output_path}")
+        print(f"Saved {mode.output_description} to {output_path}")
 
     return exit_code
 
@@ -219,12 +306,22 @@ def main(argv: list[str] | None = None) -> int:
 
     exit_code = 0
     try:
+        analysis_mode = AnalysisMode(args.mode)
+        prompt_text: str | None = None
+        if analysis_mode is AnalysisMode.REFACTOR:
+            try:
+                prompt_text = _resolve_prompt_text(args.prompt)
+            except (FileNotFoundError, ValueError) as exc:
+                print(f"Error resolving prompt: {exc}")
+                return 2
+        elif args.prompt:
+            print("Warning: --prompt is ignored outside refactor mode.")
         output_dir = (
             Path(args.output_dir).expanduser().resolve()
             if args.output_dir
             else DEFAULT_OUTPUT_DIR
         )
-        print(f"Writing reports to {output_dir}")
+        print(f"Writing {analysis_mode.output_description}s to {output_dir}")
         exclude_dirs = None
         if args.exclude_dirs:
             parsed: list[str] = []
@@ -243,6 +340,8 @@ def main(argv: list[str] | None = None) -> int:
             confirm_each=args.confirm_each,
             exclude_dirs=exclude_dirs,
             output_dir=output_dir,
+            mode=analysis_mode,
+            prompt_text=prompt_text,
         )
     except (FileNotFoundError, IsADirectoryError) as exc:
         parser.print_usage(sys.stderr)

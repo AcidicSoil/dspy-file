@@ -258,11 +258,31 @@ def read_file_content(path: Path) -> str:
     return cleaned
 
 
-def render_prediction(result: dspy.Prediction) -> str:
-    """Return the generated teaching brief markdown."""
+def _ensure_trailing_newline(text: str) -> str:
+    return text if text.endswith("\n") else text + "\n"
 
+
+def _teaching_output(result: dspy.Prediction) -> str:
     try:
         report = result.report.report_markdown  # type: ignore[attr-defined]
     except AttributeError:
         report = "# Teaching Brief\n\nThe DSPy pipeline did not produce a report."
-    return report if report.endswith("\n") else report + "\n"
+    return _ensure_trailing_newline(report)
+
+
+def _refactor_output(result: dspy.Prediction) -> str:
+    template = getattr(result, "template_markdown", None)
+    if not template:
+        template = getattr(getattr(result, "template", None), "template_markdown", None)
+    text = str(template).strip() if template else ""
+    if not text:
+        text = "# Refactor Template\n\nTemplate generation failed."
+    return _ensure_trailing_newline(text)
+
+
+def render_prediction(result: dspy.Prediction, *, mode: str = "teach") -> str:
+    """Return the generated markdown for the selected analysis mode."""
+
+    if mode == "refactor":
+        return _refactor_output(result)
+    return _teaching_output(result)

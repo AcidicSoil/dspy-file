@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
-from dspy_file.file_helpers import collect_source_paths
+from dspy_file.file_helpers import collect_source_paths, render_prediction
 
 
 def _touch(path: Path, content: str = "") -> None:
@@ -65,4 +66,17 @@ def test_collect_source_paths_honors_exclude_dirs(tmp_path: Path) -> None:
     assert collected == [kept.resolve()]
     assert collected_glob == [kept.resolve()]
 
+
+def test_render_prediction_teach_mode_uses_report() -> None:
+    prediction = SimpleNamespace(
+        report=SimpleNamespace(report_markdown="# Brief\n\nContent."),
+    )
+    output = render_prediction(prediction, mode="teach")
+    assert output.endswith("Content.\n")
+
+
+def test_render_prediction_refactor_mode_prefers_template_markdown() -> None:
+    prediction = SimpleNamespace(template_markdown="# Template\n\nValue.")
+    output = render_prediction(prediction, mode="refactor")
+    assert output.endswith("Value.\n")
 
