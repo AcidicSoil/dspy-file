@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import argparse
-import sys
+import os
 import subprocess
+import sys
 from enum import Enum
 from pathlib import Path
+from typing import Any, Final
 
 import dspy
 from dotenv import load_dotenv
@@ -15,23 +17,82 @@ from .file_helpers import collect_source_paths, read_file_content, render_predic
 from .prompts import PromptTemplate, list_bundled_prompts, load_prompt_text
 from .refactor_analyzer import FileRefactorAnalyzer
 
-MODEL_NAME = "hf.co/Mungert/Qwen3-4B-Thinking-2507-GGUF:Q4_K_M"
-OLLAMA_BASE_URL = "http://localhost:11434"
+
+class Provider(str, Enum):
+    """Supported language model providers."""
+
+    OLLAMA = "ollama"
+    OPENAI = "openai"
+    LMSTUDIO = "lmstudio"
+
+    @property
+    def is_openai_compatible(self) -> bool:
+        return self in {Provider.OPENAI, Provider.LMSTUDIO}
+
+
+DEFAULT_PROVIDER: Final[Provider] = Provider.OLLAMA
 DEFAULT_OUTPUT_DIR = Path(__file__).parent / "data"
+DEFAULT_OLLAMA_MODEL = "hf.co/Mungert/Qwen3-4B-Thinking-2507-GGUF:Q4_K_M"
+DEFAULT_LMSTUDIO_MODEL = "qwen2.5-coder-7b-instruct"
+DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
+OLLAMA_BASE_URL = "http://localhost:11434"
+LMSTUDIO_BASE_URL = "http://localhost:1234/v1"
+
+PROVIDER_DEFAULTS: Final[dict[Provider, dict[str, Any]]] = {
+    Provider.OLLAMA: {"model": DEFAULT_OLLAMA_MODEL, "api_base": OLLAMA_BASE_URL},
+    Provider.LMSTUDIO: {"model": DEFAULT_LMSTUDIO_MODEL, "api_base": LMSTUDIO_BASE_URL},
+    Provider.OPENAI: {"model": DEFAULT_OPENAI_MODEL, "api_base": None},
+}
 
 
-def configure_local_model() -> None:
-    """Configure DSPy to talk to the local Ollama model."""
+def _resolve_option(cli_value: str | None, env_var: str, default: str | None = None) -> str | None:
+    """Return the CLI value if provided, otherwise fall back to env or default."""
 
-    lm = dspy.LM(
-        f"ollama_chat/{MODEL_NAME}",
-        api_base=OLLAMA_BASE_URL,
-        api_key="",
-        streaming=False,
-        cache=False,
-    )
+    if cli_value is not None:
+        return cli_value
+    env_value = os.getenv(env_var)
+    if env_value not in ("", None):
+        return env_value
+    return default
+
+
+def _normalize_model_name(provider: Provider, raw_model: str) -> str:
+    """Attach the appropriate provider prefix to the model identifier."""
+
+    if provider is Provider.OLLAMA:
+        return raw_model if raw_model.startswith("ollama_chat/") else f"ollama_chat/{raw_model}"
+
+    if raw_model.startswith("openai/"):
+        return raw_model
+    return f"openai/{raw_model}"
+
+
+def configure_model(
+    provider: Provider,
+    model_name: str,
+    *,
+    api_base: str | None,
+    api_key: str | None,
+) -> None:
+    """Configure DSPy with the selected provider and model."""
+
+    lm_kwargs: dict[str, Any] = {"streaming": False, "cache": False}
+    if provider is Provider.OLLAMA:
+        lm_kwargs["api_base"] = api_base or OLLAMA_BASE_URL
+        # Ollama's OpenAI compatibility ignores api_key, so pass an empty string.
+        lm_kwargs["api_key"] = ""
+    else:
+        if api_base:
+            lm_kwargs["api_base"] = api_base
+        if api_key:
+            lm_kwargs["api_key"] = api_key
+
+    identifier = _normalize_model_name(provider, model_name)
+    lm = dspy.LM(identifier, **lm_kwargs)
     dspy.configure(lm=lm)
-    print(f"Configured DSPy LM: {MODEL_NAME}")
+    provider_label = "LM Studio" if provider is Provider.LMSTUDIO else provider.value
+    suffix = f" via {api_base}" if provider.is_openai_compatible and api_base else ""
+    print(f"Configured DSPy LM ({provider_label}): {model_name}{suffix}")
 
 
 def stop_ollama_model(model_name: str) -> None:
@@ -161,6 +222,48 @@ def build_parser() -> argparse.ArgumentParser:
         description="Analyze a single file using DSPy signatures and modules",
     )
     parser.add_argument("path", help="Path to the file to analyze")
+    parser.add_argument(
+        "--provider",
+        choices=[provider.value for provider in Provider],
+        default=None,
+        help=(
+            "Language model provider to use (env: DSPYTEACH_PROVIDER). "
+            "Choose from 'ollama', 'lmstudio', or 'openai'."
+        ),
+    )
+    parser.add_argument(
+        "--model",
+        dest="model_name",
+        default=None,
+        help=(
+            "Override the model identifier for the selected provider "
+            "(env: DSPYTEACH_MODEL)."
+        ),
+    )
+    parser.add_argument(
+        "--api-base",
+        dest="api_base",
+        default=None,
+        help=(
+            "Override the OpenAI-compatible API base URL "
+            "(env: DSPYTEACH_API_BASE)."
+        ),
+    )
+    parser.add_argument(
+        "--api-key",
+        dest="api_key",
+        default=None,
+        help=(
+            "API key for OpenAI-compatible providers (env: DSPYTEACH_API_KEY). "
+            "Falls back to OPENAI_API_KEY for the OpenAI provider."
+        ),
+    )
+    parser.add_argument(
+        "--keep-provider-alive",
+        action="store_true",
+        dest="keep_provider_alive",
+        help="Skip stopping the local Ollama model when execution completes.",
+    )
     parser.add_argument(
         "-r",
         "--raw",
@@ -299,10 +402,29 @@ def analyze_path(
 
 def main(argv: list[str] | None = None) -> int:
     load_dotenv()
-    configure_local_model()
 
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    provider_value = _resolve_option(args.provider, "DSPYTEACH_PROVIDER", DEFAULT_PROVIDER.value)
+    try:
+        provider = Provider(provider_value)
+    except ValueError:  # pragma: no cover - argparse handles this
+        valid = ", ".join(p.value for p in Provider)
+        parser.error(f"Unsupported provider '{provider_value}'. Choose from: {valid}.")
+
+    defaults = PROVIDER_DEFAULTS[provider]
+    model_name = _resolve_option(args.model_name, "DSPYTEACH_MODEL", defaults["model"])
+    api_base_default = defaults.get("api_base")
+    api_base = _resolve_option(args.api_base, "DSPYTEACH_API_BASE", api_base_default)
+    api_key = _resolve_option(args.api_key, "DSPYTEACH_API_KEY", None)
+    if provider is Provider.OPENAI and not api_key:
+        api_key = os.getenv("OPENAI_API_KEY")
+    if provider is Provider.LMSTUDIO and not api_key:
+        api_key = "lm-studio"
+
+    configure_model(provider, model_name, api_base=api_base, api_key=api_key)
+    stop_model: str | None = model_name if provider is Provider.OLLAMA else None
 
     exit_code = 0
     try:
@@ -350,7 +472,8 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         exit_code = 1
     finally:
-        stop_ollama_model(MODEL_NAME)
+        if provider is Provider.OLLAMA and not args.keep_provider_alive and stop_model:
+            stop_ollama_model(stop_model)
 
     return exit_code
 

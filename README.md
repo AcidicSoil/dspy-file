@@ -32,8 +32,11 @@ The implementation mirrors the multi-file tutorial (`tutorials/multi-llmtxt_gene
 
 - Python 3.10-3.12+
 - DSPy installed in the environment
-- Ollama running locally with the model `hf.co/Mungert/osmosis-mcp-4b-GGUF:Q4_K_M` available
-- (Optional) `.env` file for any additional DSPy configuration; `dotenv` is loaded automatically
+- A language-model backend. You can choose between:
+  - **Ollama** (default): run it locally with the model `hf.co/Mungert/osmosis-mcp-4b-GGUF:Q4_K_M` pulled.
+  - **LM Studio** (OpenAI-compatible): start the LM Studio server (`lms server start`) and download a model such as `qwen2.5-coder-7b-instruct`.
+  - **Any other OpenAI-compatible endpoint**: point the CLI at a hosted provider by supplying an API base URL and key.
+- (Optional) `.env` file for DSPy configuration. `dotenv` loads variables such as `DSPYTEACH_PROVIDER`, `DSPYTEACH_MODEL`, `DSPYTEACH_API_BASE`, `DSPYTEACH_API_KEY`, and `OPENAI_API_KEY`.
 
 Install the Python dependencies if you have not already:
 **you dont need all of these commands to correctly install**
@@ -64,6 +67,28 @@ ollama pull hf.co/Mungert/osmosis-mcp-4b-GGUF:Q4_K_M
 ```bash
 uv pip install dspyteach
 ```
+
+### Configure the language model
+
+The CLI now supports configurable OpenAI-compatible providers in addition to the default Ollama runtime. You can override the backend via CLI options or environment variables:
+
+```bash
+# Use LM Studio's OpenAI-compatible server with its default port
+dspyteach path/to/project \
+  --provider lmstudio \
+  --model qwen2.5-coder-7b-instruct \
+  --api-base http://localhost:1234/v1
+```
+
+```bash
+# Environment variable alternative (e.g. inside .env)
+export DSPYTEACH_PROVIDER=lmstudio
+export DSPYTEACH_MODEL=qwen2.5-coder-7b-instruct
+export DSPYTEACH_API_BASE=http://localhost:1234/v1
+dspyteach path/to/project
+```
+
+For hosted OpenAI-compatible services, set `--provider openai`, supply `--api-base` if needed, and pass an API key either through `--api-key`, `DSPYTEACH_API_KEY`, or the standard `OPENAI_API_KEY`. To keep a local Ollama model running after the CLI finishes, add `--keep-provider-alive`.
 
 ## Usage
 
@@ -116,10 +141,10 @@ The generated brief is markdown that mirrors the source material:
 Behind the scenes the CLI:
 
 1. Loads environment variables via `python-dotenv`.
-2. Configures DSPy with the same local Ollama model used in the tutorial.
+2. Configures DSPy with the provider selected via CLI or environment variables (Ollama by default).
 3. Resolves all requested files, reads contents, runs the DSPy `FileTeachingAnalyzer` module, and prints a human-friendly report for each.
 4. Persists each report to the configured output directory so results are easy to revisit.
-5. Attempts to stop the Ollama model when finished, mirroring the fail-safe logic from the tutorial.
+5. Stops the Ollama model when appropriate so local resources are returned to the pool.
 
 ## Extending
 

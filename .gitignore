@@ -11,13 +11,14 @@ uv.lock
 dspyteach.egg-info/
 dist/
 /codefetch/
-.taskmaster/owner-docs/
+.taskmaster/owner-docs
 !.taskmaster/
 /.cursor/
 scripts/
 # Logs
 logs
 *.log
+!.taskmaster/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
