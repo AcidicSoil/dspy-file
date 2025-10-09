@@ -1,0 +1,225 @@
+# Overview
+Product: dspyteach – DSPy File Teaching Analyzer (CLI). It analyzes one or more source files and produces polished teaching briefs with overviews, section bullets, key workflows, pitfalls, and references. The tool mirrors a multi-file tutorial but focuses on per-file inference using DSPy modules and a Refine loop to reach target length and quality. fileciteturn0file0
+
+Problem: educators and engineers need fast, consistent teaching summaries from code or docs without manually sifting through files. They want a reliable CLI that reads local files, extracts teaching points, and saves a shareable markdown brief per file. fileciteturn0file0
+
+Value: consistent, higher-quality instructional briefs, batch processing for directories, repeatable outputs, local execution compatible with privacy-minded workflows, and zero cloud dependency when paired with a local model. fileciteturn0file0
+
+Scope: a Python 3.12+ CLI that recurses directories, honors glob filters, can operate non-recursively, prints the active model and resolved output directory, writes reports to a chosen folder, and avoids overwriting by auto-suffixing filenames. It integrates DSPy, a local Ollama model, and dotenv-loaded configuration. fileciteturn0file0
+
+Constraints: local-only inference assumed; requires DSPy installed and a specific Ollama model available; encoding fallbacks may be needed for odd files; installation steps vary (uv, pip); schema adherence depends on the model quality with a structured-output fallback. fileciteturn0file0
+
+# Core Features
+1) Single-file analysis
+- What: analyze a single file path and emit a teaching brief in markdown.
+- Why: primary, simplest path for users to generate a brief quickly.
+- High-level How: load environment, configure DSPy with local model, read file content with encoding fallback, run FileTeachingAnalyzer (overview, teaching extraction, composition with Refine), render and persist markdown under output directory. fileciteturn0file0
+- BDD
+  Given a valid file path
+  When the user runs `dspyteach path/to/file`
+  Then a markdown brief is generated and saved to the output directory and the CLI prints the model name and resolved output path.
+
+2) Directory recursion with glob filters
+- What: allow a directory target, recurse by default, and include multiple `--glob` filters.
+- Why: batch processing across projects, controlling scope to file types of interest (e.g., .py, .md).
+- High-level How: resolve file set by walking directories, apply each glob, dedupe, then process files in sequence. Support `--non-recursive` to limit scope. fileciteturn0file0
+- BDD
+  Given a directory with mixed files
+  When the user runs `dspyteach dir --glob "**/*.py" --glob "**/*.md"`
+  Then only matching files are analyzed recursively; with `--non-recursive`, only the top-level matches are analyzed.
+
+3) Output management and safe filenames
+- What: `--output-dir` to control where briefs go; auto-slug filenames and append numeric suffixes to avoid overwrites.
+- Why: predictable, repeatable artifact management.
+- High-level How: build a deterministic slug from the input path, check for collisions in the output directory, append numeric suffix if a file exists, and write the result. fileciteturn0file0
+- BDD
+  Given an existing brief for `src/main.py`
+  When a new brief is generated
+  Then the CLI saves `src__main.teaching.md` or `src__main.teaching-1.md` if the original exists.
+
+4) Report generation with DSPy and Refine
+- What: produce longer, more consistent briefs via a Refine loop with a length reward and token/config controls.
+- Why: ensure briefs exceed simple single-call outputs and maintain structured fidelity.
+- High-level How: signatures define inputs/outputs; the analyzer chains overview, teaching extraction, and composition; a `dspy.Refine` wrapper iterates until the length reward threshold. fileciteturn0file0
+- BDD
+  Given a sufficiently large source file
+  When the analyzer runs
+  Then the final brief meets the configured length reward and structured sections are present.
+
+5) Raw prediction option
+- What: `--raw` flag prints the raw DSPy prediction object instead of the formatted brief.
+- Why: debugging, CI inspection, and downstream tooling integration.
+- High-level How: bypass render step and print the structured object; if the model fails schema, emit a “Structured output fallback” notice and heuristic parse. fileciteturn0file0
+- BDD
+  Given the `--raw` flag
+  When analysis completes
+  Then the CLI outputs the raw prediction or a fallback-parsed object if strict schema isn’t met.
+
+6) Environment and model configuration
+- What: load `.env`, configure DSPy with a local Ollama model, and stop the model after runs.
+- Why: local, privacy-friendly inference with clear environment behavior.
+- High-level How: load environment variables via python-dotenv; set DSPy to use the specified local model; on exit attempt graceful model shutdown mirroring the tutorial’s fail-safe logic. fileciteturn0file0
+- BDD
+  Given a running Ollama server and the specified model present
+  When the CLI starts
+  Then it prints the active model and proceeds; if the server or model is missing, it surfaces actionable errors from Troubleshooting.
+
+# User Experience
+Personas
+- Instructor/TA: wants fast briefs to organize lectures and labs across many files.
+- Team lead/dev mentor: needs consistent onboarding docs distilled from repos.
+- Individual learner: wants a guided summary of complex files.
+
+Key flows
+1) Single-file brief: invoke CLI with a path; read, analyze, write; confirm model and output path in console. fileciteturn0file0
+2) Batch briefs: target a directory with recursion and globs; review generated files in the output directory. fileciteturn0file0
+3) Debug/CI: run with `--raw` to capture structured output for pipelines. fileciteturn0file0
+
+UI/UX
+- Console-only feedback: minimal, readable prints for model name, resolved output dir, progress, and fallback notices. fileciteturn0file0
+- File naming is deterministic and human-readable (slugged). fileciteturn0file0
+
+Accessibility
+- Clear CLI flags with help text; no color-only signals; error messages advise fixes (e.g., start Ollama, install model). Encoding fallback improves robustness for diverse text files. fileciteturn0file0
+
+# Technical Architecture
+Components
+- Signatures: define IO contracts for overview, teaching extraction, and report composition. fileciteturn0file0
+- FileTeachingAnalyzer module: orchestrates steps and wraps composition in Refine for length reward. fileciteturn0file0
+- Helpers: file loading with encoding fallback and markdown rendering utilities. fileciteturn0file0
+- CLI entry point: resolves files, applies globs and recursion, configures model/env, prints model and output dir, runs analysis, saves artifacts. fileciteturn0file0
+
+Data model (conceptual)
+- TeachingReport
+  - overview: str
+  - sections: list[str]
+  - key_points: list[str]
+  - pitfalls: list[str]
+  - references: list[str]
+  - meta: {source_path, analyzer_version, model_name, created_at}
+
+APIs and integrations
+- DSPy runtime and signatures for structured outputs and refinement. fileciteturn0file0
+- Ollama local model, pulled as `hf.co/Mungert/osmosis-mcp-4b-GGUF:Q4_K_M`. fileciteturn0file0
+- python-dotenv for environment loading. fileciteturn0file0
+
+Infrastructure
+- Local execution, no remote calls required; Python 3.12+ environment; packaging via `pyproject.toml` and uv/pip; optional publishing to TestPyPI/PyPI with CI workflows. fileciteturn0file0
+
+NFRs
+- Performance: handle multi-file runs without excessive latency; bounded by model throughput.
+- Reliability: schema adherence with structured-output fallback; safe filename generation and collision handling. fileciteturn0file0
+- Portability: run on common OSes with Python 3.12+; avoid hardcoded paths.
+- Observability: clear console prints for model name, output dir, and fallback notices. fileciteturn0file0
+- Usability: sensible defaults (recursive), explicit flags for `--non-recursive`, `--glob`, `--raw`, and `--output-dir`. fileciteturn0file0
+
+Cross-platform strategy
+- Platform feature: local Ollama server at `http://localhost:11434` expected; if not available, user guidance provided. Encoding fallbacks for file reads. fileciteturn0file0
+- Cross-platform fallback: when the model can’t honor the structured schema, enable heuristic parsing and still emit usable bullets. fileciteturn0file0
+- BDD tests for fallbacks
+  Given Ollama is not running
+  When the CLI starts
+  Then the user sees a clear error instructing to start the server or install the model.
+
+  Given schema non-compliance
+  When `--raw` or normal render runs
+  Then the CLI prints a “Structured output fallback” notice and produces a heuristically parsed output.
+
+Security and privacy
+- Reads local files only; no automatic network exfiltration. Potential exposure of secrets embedded in source files is limited to local processing and saved briefs; warn users to avoid including credentials in repos. Optional `.env` use may hold sensitive keys; do not log values. fileciteturn0file0
+
+# Development Roadmap
+MVP
+- Single-file analysis and markdown brief generation.
+- Directory recursion with `--glob` and `--non-recursive`.
+- Output management with slugging and suffixing; console prints for model and output dir.
+- Refine loop for length reward; encoding fallback; raw output flag.
+Acceptance criteria: running the examples in README yields saved briefs, correct prints, no overwrites, and usable outputs even when schema compliance is imperfect. fileciteturn0file0
+
+Future Enhancements
+- Structured JSON export alongside markdown for CI and downstream tools.
+- Configurable word-count reward and token budgets via CLI flags.
+- Additional metadata chains (e.g., security checks) and richer renderers.
+- Parallel file processing for large repos.
+- First-class Windows path handling tests.
+- Optional interactive TUI.
+Acceptance criteria: flags produce new artifacts; CI consumes JSON; performance improves on large batches; Windows paths pass tests.
+
+# Logical Dependency Chain
+1) Core analyzer and signatures
+2) File read/render helpers with encoding fallback
+3) CLI scaffolding with flags and recursion/globs
+4) Output directory and safe-file naming
+5) Environment and model configuration; console prints
+6) Refine loop tuning and schema-fallback logic
+7) Packaging (console script, alias), documentation, and CI publishing
+
+# Risks and Mitigations
+1) Ollama or model unavailable
+- Description: local server not running or model not pulled.
+- Likelihood: Medium
+- Impact: High
+- Mitigation: clear error messages and README troubleshooting; pre-run checks. fileciteturn0file0
+
+2) Model fails structured schema
+- Description: outputs don’t match DSPy signatures.
+- Likelihood: Medium
+- Impact: Medium
+- Mitigation: structured-output fallback with heuristic parsing and notices. fileciteturn0file0
+
+3) File encoding issues
+- Description: non-UTF-8 sources cause read errors.
+- Likelihood: Medium
+- Impact: Medium
+- Mitigation: latin-1 fallback; extensible encoding strategy in helpers. fileciteturn0file0
+
+4) Overwrite of previous briefs
+- Description: repeated runs clobber outputs.
+- Likelihood: Low
+- Impact: Medium
+- Mitigation: slug names and numeric suffixes to avoid overwrites. fileciteturn0file0
+
+5) Privacy exposure
+- Description: sensitive tokens or secrets present in source files could end up summarized.
+- Likelihood: Low
+- Impact: High
+- Mitigation: local-only processing; user education to scrub secrets; avoid logging .env values. fileciteturn0file0
+
+6) Cross-platform quirks
+- Description: path separators and shell quoting differ by OS.
+- Likelihood: Medium
+- Impact: Low
+- Mitigation: path utilities; tests; documentation notes.
+
+# Appendix
+Assumptions
+- Runs entirely locally; no remote inference required.
+- Primary OS targets are Unix-like; Windows supported with testing.
+- Typical users have Python 3.12+, DSPy, Ollama, and the required model installed.
+- Large files can be processed serially; parallelism deferred to later.
+- TeachingReport fields are representative; actual schema may be extended.
+
+Research findings and references (from project plan only)
+- CLI recurses by default; supports `--glob`, `--non-recursive`, `--raw`, `--output-dir`; prints model and output dir. fileciteturn0file0
+- Uses DSPy Signatures and a Refine wrapper to reach a length reward; saves reports with slug names and numeric suffixes. fileciteturn0file0
+- Requirements: Python 3.12+, DSPy installed, local Ollama with specific model; dotenv autoloads. fileciteturn0file0
+- Packaging and publishing via uv/pip, TestPyPI/PyPI, and CI workflows. fileciteturn0file0
+
+Context notes (visible link text only)
+- PyPI — package badge
+- Downloads — package badge
+- Python — versions badge
+- License — repo license
+- TestPyPI — alt index
+- Tests — workflow badge
+- CI — workflow badge
+- uv — publishing guide
+
+Technical specs and glossary
+- DSPy: framework for declarative LLM programs using signatures/modules and structured outputs.
+- Refine loop: iterative improvement wrapper with a length reward target.
+- Ollama: local model runtime expected at a default host/port.
+- `.env` / python-dotenv: local environment variable loading.
+- uv: Python packaging/build/publish tool.
+- TeachingReport: conceptual structured output for briefs.
+- Slugging: deterministic file-name transformation that’s collision-safe.

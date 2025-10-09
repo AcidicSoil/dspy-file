@@ -25,9 +25,9 @@ class RefactorTemplateSignature(dspy.Signature):
 class RefactorTeachingConfig:
     """Configuration for the refactor template generator."""
 
-    max_tokens: int = 2000
-    temperature: float | None = 0.2
-    top_p: float | None = None
+    max_tokens: int = 4000
+    temperature: float | None = 0.6
+    top_p: float | None = 0.95
     n_completions: int | None = None
     extra_lm_kwargs: dict[str, Any] = field(default_factory=dict)
 

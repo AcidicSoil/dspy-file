@@ -15,7 +15,7 @@ from .file_helpers import collect_source_paths, read_file_content, render_predic
 from .prompts import PromptTemplate, list_bundled_prompts, load_prompt_text
 from .refactor_analyzer import FileRefactorAnalyzer
 
-MODEL_NAME = "hf.co/unsloth/Qwen3-4B-Thinking-2507-GGUF:Q4_K_M"
+MODEL_NAME = "hf.co/Mungert/Qwen3-4B-Thinking-2507-GGUF:Q4_K_M"
 OLLAMA_BASE_URL = "http://localhost:11434"
 DEFAULT_OUTPUT_DIR = Path(__file__).parent / "data"
 

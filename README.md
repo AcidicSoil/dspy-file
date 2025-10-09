@@ -87,6 +87,8 @@ To omit specific subdirectories entirely, pass one or more `--exclude-dirs` opti
 
 Prefer short flags? The common options include `-r` (`--raw`), `-m` (`--mode`), `-nr` (`--non-recursive`), `-g` (`--glob`), `-i` (`--confirm-each`), `-ed` (`--exclude-dirs`), and `-o` (`--output-dir`). Mix and match them as needed.
 
+## Refactor files/dirs
+
 Want to scaffold refactor prompt templates instead of teaching briefs? Switch the mode:
 
 ```bash
