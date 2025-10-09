@@ -10,7 +10,6 @@ __pycache__
 uv.lock
 dspyteach.egg-info/
 dist/
-
 /codefetch/
 /.taskmaster/
 /.cursor/

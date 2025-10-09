@@ -126,47 +126,9 @@ Behind the scenes the CLI:
 - Tune `TeachingConfig` inside `file_analyzer.py` to raise `max_tokens`, adjust the `Refine` word-count reward, or add extra LM kwargs.
 - Add more signatures and module stages to capture additional metadata (e.g., security checks) and wire them into `FileAnalyzer`.
 
-## Packaging & Publishing
+## Releasing
 
-The repository is configured for standard Python packaging via `pyproject.toml` and the `setuptools` backend. A typical release flow with [`uv`](https://docs.astral.sh/uv/guides/package/) looks like:
-
-```bash
-# (optional) bump the version before you publish
-uv version --bump patch
-
-# build the source distribution and wheel; artifacts land in dist/
-uv build --no-sources
-
-# publish to PyPI (or TestPyPI) once you have an API token
-UV_PUBLISH_TOKEN=... uv publish
-```
-
-If you want to stage a release first, point `uv publish --index testpypi` at the alternate index configured in `pyproject.toml`.
-
-To install the package from a freshly built artifact:
-
-```bash
-pip install dist/dspyteach-0.1.1-py3-none-any.whl
-```
-
-Once the project is on PyPI, users can install it directly:
-
-```bash
-pip install dspyteach
-```
-
-After installation, the `dspyteach` console script (plus the legacy `dspy-file-teaching` alias) is available in any environment so you can run analyses outside of this repository or integrate the tool into CI jobs.
-
-### CI Publishing
-
-GitHub Actions users can trigger `.github/workflows/publish-testpypi.yml` to build and push the current checkout to TestPyPI. The workflow:
-
-- Checks out the repository (ensuring `pyproject.toml` is present as required by uv publish).
-- Installs uv with Python 3.12.
- - Runs `uv build --no-sources` from the repository root.
-- Publishes with `uv publish --index testpypi dist/*` using the `TEST_PYPI_TOKEN` secret.
-
-See the [uv publishing guide](https://docs.astral.sh/uv/guides/package/#publishing-your-package) for the official note about requiring a checkout when using `--index`.
+Maintainer release steps live in [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Troubleshooting
 
