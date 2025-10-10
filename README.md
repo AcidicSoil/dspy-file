@@ -96,7 +96,7 @@ dspyteach path/to/project
 
 ### LM-Studio Usage Notes
 
-[[lm-studio-provider](docs/lm-studio-provider)]
+[[lm-studio-provider](docs/lm-studio-provider.md)]
 
 LM Studio must expose its local server before you run the CLI. Start it from the Developer tab inside the LM Studio app or via `lms server start` (see `docs/lm-studio-provider.md` for details); otherwise the CLI will exit early with a connection warning.
 
