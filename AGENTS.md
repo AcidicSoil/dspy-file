@@ -314,7 +314,3 @@ Rules for Best-Practice
 </architecture\_boundaries>
 
 -------
-
-I aligned the new **Proactive TODO/FIXME Annotations** section with your existing **todos.md** guidance and preserved your original AGENTS.md tooling rubric.
-
--------
