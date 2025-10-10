@@ -4,7 +4,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/dspyteach.svg?include_prereleases&cacheSeconds=60&t=1)](https://pypi.org/project/dspyteach/)
 [![Downloads](https://img.shields.io/pypi/dm/dspyteach.svg?cacheSeconds=300)](https://pypi.org/project/dspyteach/)
-[![Python](https://img.shields.io/pypi/pyversions/dspyteach.svg?cacheSeconds=300)](https://pypi.org/project/dspyteach/)
+[![Python](https.img.shields.io/pypi/pyversions/dspyteach.svg?cacheSeconds=300)](https://pypi.org/project/dspyteach/)
 [![License](https://img.shields.io/pypi/l/dspyteach.svg?cacheSeconds=300)](LICENSE)
 [![TestPyPI](https://img.shields.io/badge/TestPyPI-dspyteach-informational?cacheSeconds=300)](https://test.pypi.org/project/dspyteach/)
 [![CI](https://github.com/AcidicSoil/dspy-file/actions/workflows/release.yml/badge.svg)](…)
@@ -33,9 +33,9 @@ The implementation mirrors the multi-file tutorial (`tutorials/multi-llmtxt_gene
 - Python 3.10-3.12+
 - DSPy installed in the environment
 - A language-model backend. You can choose between:
-  - **Ollama** (default): run it locally with the model `hf.co/Mungert/osmosis-mcp-4b-GGUF:Q4_K_M` pulled.
-  - **LM Studio** (OpenAI-compatible): start the LM Studio server (`lms server start`) and download a model such as `qwen2.5-coder-7b-instruct`.
-  - **Any other OpenAI-compatible endpoint**: point the CLI at a hosted provider by supplying an API base URL and key.
+  - **Ollama** (default): run it locally with the model `hf.co/unsloth/Qwen3-4B-Instruct-2507-GGUF:Q6_K_XL` pulled.
+  - **LM Studio** (OpenAI-compatible): start the LM Studio server (`lms server start`) and download a model such as `qwen3-4b-instruct-2507@q6_k_xl`.
+  - **Any other OpenAI-compatible endpoint**: point the CLI at a hosted provider by supplying an API base URL and key (defaults to `gpt-5`).
 - (Optional) `.env` file for DSPy configuration. `dotenv` loads variables such as `DSPYTEACH_PROVIDER`, `DSPYTEACH_MODEL`, `DSPYTEACH_API_BASE`, `DSPYTEACH_API_KEY`, and `OPENAI_API_KEY`.
 
 ---
@@ -69,7 +69,7 @@ uv sync
 #### will add options to use your preferred model of choice later
 
 ```bash
-ollama pull hf.co/Mungert/osmosis-mcp-4b-GGUF:Q4_K_M
+ollama pull hf.co/unsloth/Qwen3-4B-Instruct-2507-GGUF:Q6_K_XL
 ```
 
 ```bash
@@ -84,14 +84,14 @@ The CLI now supports configurable OpenAI-compatible providers in addition to the
 # Use LM Studio's OpenAI-compatible server with its default port
 dspyteach path/to/project \
   --provider lmstudio \
-  --model qwen2.5-coder-7b-instruct \
+  --model qwen3-4b-instruct-2507@q6_k_xl \
   --api-base http://localhost:1234/v1
 ```
 
 ```bash
 # Environment variable alternative (e.g. inside .env)
 export DSPYTEACH_PROVIDER=lmstudio
-export DSPYTEACH_MODEL=qwen2.5-coder-7b-instruct
+export DSPYTEACH_MODEL=qwen3-4b-instruct-2507@q6_k_xl
 export DSPYTEACH_API_BASE=http://localhost:1234/v1
 dspyteach path/to/project
 ```
@@ -135,7 +135,7 @@ Use `--non-recursive` to stay in the top-level directory, add `--glob` repeatedl
 - **Directory with multiple glob filters** – quote globs so the shell does not expand them:
 
   ```bash
-  dspyteach ./course-notes --glob "**/*.md" --glob "**/*.py"
+  dspyteach ./course-notes --glob "**/*.py" --glob "**/*.md"
   ```
 
 - **Skip subdirectories entirely** – combine with other flags as needed:
@@ -176,7 +176,7 @@ Use `--non-recursive` to stay in the top-level directory, add `--glob` repeatedl
   dspyteach ./notes \
     --provider lmstudio \
     --api-base http://<windows-host-ip>:1234/v1 \
-    --model qwen2.5-coder-7b-instruct
+    --model qwen3-4b-instruct-2507@q6_k_xl
   ```
 
 Need to double-check files before the model runs? Add `--confirm-each` (alias `--interactive`) to prompt before every file, accepting with Enter or skipping with `n`.
