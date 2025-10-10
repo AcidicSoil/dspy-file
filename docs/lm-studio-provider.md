@@ -65,3 +65,12 @@ curl http://<local-ip>/v1/chat/completions \
 }'
 
 ```
+
+- **WSL to LM Studio on Windows** – pair the earlier WSL note with a concrete host example:
+
+  ```bash
+  dspyteach ./notes \
+    --provider lmstudio \
+    --api-base http://<windows-host-ip>:1234/v1 \
+    --model qwen3-4b-instruct-2507@q6_k_xl
+  ```

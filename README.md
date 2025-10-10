@@ -172,15 +172,6 @@ Use `--non-recursive` to stay in the top-level directory, add `--glob` repeatedl
   dspyteach src/module.py --raw > /tmp/module.teaching.txt
   ```
 
-- **WSL to LM Studio on Windows** – pair the earlier WSL note with a concrete host example:
-
-  ```bash
-  dspyteach ./notes \
-    --provider lmstudio \
-    --api-base http://<windows-host-ip>:1234/v1 \
-    --model qwen3-4b-instruct-2507@q6_k_xl
-  ```
-
 Need to double-check files before the model runs? Add `--confirm-each` (alias `--interactive`) to prompt before every file, accepting with Enter or skipping with `n`.
 
 To omit specific subdirectories entirely, pass one or more `--exclude-dirs` options. Each value can list comma-separated relative paths (for example `--exclude-dirs "build/,venv/" --exclude-dirs data/raw`). The analyzer ignores any files whose path begins with the provided prefixes.
