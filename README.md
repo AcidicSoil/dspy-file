@@ -38,6 +38,15 @@ The implementation mirrors the multi-file tutorial (`tutorials/multi-llmtxt_gene
   - **Any other OpenAI-compatible endpoint**: point the CLI at a hosted provider by supplying an API base URL and key.
 - (Optional) `.env` file for DSPy configuration. `dotenv` loads variables such as `DSPYTEACH_PROVIDER`, `DSPYTEACH_MODEL`, `DSPYTEACH_API_BASE`, `DSPYTEACH_API_KEY`, and `OPENAI_API_KEY`.
 
+---
+
+## Example output
+
+[[examples](example-data/.dspy-file-teachings/)](example-data/.dspy-file-teachings)
+
+---
+
+
 Install the Python dependencies if you have not already:
 **you dont need all of these commands to correctly install**
 
