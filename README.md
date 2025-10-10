@@ -46,7 +46,6 @@ The implementation mirrors the multi-file tutorial (`tutorials/multi-llmtxt_gene
 
 ---
 
-
 Install the Python dependencies if you have not already:
 **you dont need all of these commands to correctly install**
 
@@ -119,6 +118,67 @@ dspyteach path/to/project --glob "**/*.py" --glob "**/*.md"
 
 Use `--non-recursive` to stay in the top-level directory, add `--glob` repeatedly to narrow the target set, and pass `--raw` to print the raw DSPy prediction object instead of the formatted report.
 
+### Command examples
+
+- **Personal Example**
+
+  ```bash
+  { dt --provider lmstudio -m refactor ./dspy_file/ -ed "prompts/, data/" ;}
+  ```
+
+- **Single file (default settings)**
+
+  ```bash
+  dspyteach docs/example.md
+  ```
+
+- **Directory with multiple glob filters** – quote globs so the shell does not expand them:
+
+  ```bash
+  dspyteach ./course-notes --glob "**/*.md" --glob "**/*.py"
+  ```
+
+- **Skip subdirectories entirely** – combine with other flags as needed:
+
+  ```bash
+  dspyteach ./repo --non-recursive --glob "*.md"
+  ```
+
+- **Exclude generated folders** – pass one `--exclude-dirs` per path or provide a comma-separated list with no extra spaces:
+
+  ```bash
+  dspyteach ./dspy_file --exclude-dirs prompts/ --exclude-dirs data/
+  dspyteach ./dspy_file --exclude-dirs "prompts/,data/"
+  ```
+
+  ❌ `dspyteach ./dspy_file -ed prompts/, data/` fails with `unrecognized arguments: data/` because the second path is not attached to `-ed`.
+- **Refactor template generation** – switch modes and optionally choose a bundled prompt by name:
+
+  ```bash
+  dspyteach ./repo --mode refactor --prompt refactor_prompt_template
+  ```
+
+- **Custom prompt file** – works only in refactor mode; ignored otherwise:
+
+  ```bash
+  dspyteach ./repo --mode refactor --prompt ./my_prompts/api-hardening.md
+  ```
+
+- **Silent raw output for scripting** – useful when piping into other tools:
+
+  ```bash
+  dspyteach src/module.py --raw > /tmp/module.teaching.txt
+  ```
+
+- **WSL to LM Studio on Windows** – pair the earlier WSL note with a concrete host example:
+
+  ```bash
+  dspyteach ./notes \
+    --provider lmstudio \
+    --api-base http://<windows-host-ip>:1234/v1 \
+    --model qwen2.5-coder-7b-instruct
+  ```
+
 Need to double-check files before the model runs? Add `--confirm-each` (alias `--interactive`) to prompt before every file, accepting with Enter or skipping with `n`.
 
 To omit specific subdirectories entirely, pass one or more `--exclude-dirs` options. Each value can list comma-separated relative paths (for example `--exclude-dirs "build/,venv/" --exclude-dirs data/raw`). The analyzer ignores any files whose path begins with the provided prefixes.
@@ -132,6 +192,10 @@ Want to scaffold refactor prompt templates instead of teaching briefs? Switch th
 ```bash
 dspyteach path/to/project --mode refactor --glob "**/*.md"
 ```
+
+---
+
+## Additional Information
 
 The CLI reuses the same file resolution pipeline but feeds each document through the bundled `dspy-file_refactor-prompt_template.md` instructions (packaged under `dspy_file/prompts/`), saving `.refactor.md` files alongside the teaching reports. Teaching briefs remain the default (`--mode teach`), so existing workflows continue to work unchanged.
 
@@ -159,12 +223,14 @@ Behind the scenes the CLI:
 4. Persists each report to the configured output directory so results are easy to revisit.
 5. Stops the Ollama model when appropriate so local resources are returned to the pool.
 
-## Extending
+### Extending
 
 - Adjust the `TeachingReport` signature or add new chains in `dspy_file/file_analyzer.py` to capture additional teaching metadata.
 - Customize the render logic in `dspy_file.file_helpers.render_prediction` if you want richer CLI output or structured JSON.
 - Tune `TeachingConfig` inside `file_analyzer.py` to raise `max_tokens`, adjust the `Refine` word-count reward, or add extra LM kwargs.
 - Add more signatures and module stages to capture additional metadata (e.g., security checks) and wire them into `FileAnalyzer`.
+
+---
 
 ## Releasing
 
