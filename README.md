@@ -42,7 +42,7 @@ The implementation mirrors the multi-file tutorial (`tutorials/multi-llmtxt_gene
 
 ## Example output
 
-[[examples](example-data/.dspy-file-teachings/)](example-data/.dspy-file-teachings)
+[[example-data after running a few passes](example-data/)]
 
 ---
 
