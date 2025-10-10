@@ -1,153 +1,320 @@
-# AGENTS.md — Tool Selection (Python)
+<!-- path: ~/projects/archive/dspy-file/AGENTS.md -->
+
+# AGENTS.md
+
+```markdown
+    Goal: Always choose and present the most relevant prompt template for optimizing the user’s question before any response generation.
+
+    Inputs:
+    - query = {question_or_query}
+    - templates_dir = {{path | default="~/.codex/prompts"}}
+
+    Steps:
+    1) Discover prompts in templates_dir (glob: **/*.{md,txt}).
+    2) Extract: name, relative_path, first_heading, tags (#tags or YAML), first_paragraph.
+    3) Compute relevance = {{method|BM25}} over [first_heading, tags, first_paragraph].
+    4) Rank and select top-k (k={{k|1}}). Require relevance ≥ {{min_relevance|0.3}}.
+    5) Produce an “Optimization Pack”:
+       - chosen_prompt (full text, unchanged)
+       - why_chosen (3 bullets)
+       - how_to_fill_placeholders (map for $1..$n / {{var}} inferred from query)
+       - fallbacks (up to 2 alternates with brief use-cases)
+
+    Edge cases:
+    - Empty directory → return error “No templates found” and stop.
+    - Multiple near-ties (Δ<0.02) → include both in fallbacks.
+    - No match → return {{fallback_prompt|/general.md}} if present; else report “No suitable match”.
+
+    Acceptance:
+    - Uses default path when omitted.
+    - Returns verbatim content of chosen prompt.
+    - Includes a clear placeholder-filling guide.
+```
+
+## AGENTS.md — Tool Selection (Python)
+
+-------
 
 When you need to call tools from the shell, use this rubric:
 
-## File & Text
+File & Text
 
-- Find files by file name: `fd`
-- Find files with path name: `fd -p <file-path>`
-- List files in a directory: `fd . <directory>`
-- Find files with extension and pattern: `fd -e <extension> <pattern>`
-- Find Text: `rg` (ripgrep)
-- Find Code Structure: `ast-grep`
-  - Common languages:
-    - Python → `ast-grep --lang python -p '<pattern>'`
-    - TypeScript → `ast-grep --lang ts -p '<pattern>'`
-    - Bash → `ast-grep --lang bash -p '<pattern>'`
-    - TSX (React) → `ast-grep --lang tsx -p '<pattern>'`
-    - JavaScript → `ast-grep --lang js -p '<pattern>'`
-    - Rust → `ast-grep --lang rust -p '<pattern>'`
-    - JSON → `ast-grep --lang json -p '<pattern>'`
-  - Prefer `ast-grep` over ripgrep/grep unless a plain-text search is explicitly requested.
-- Select among matches: pipe to `fzf`
+-------
 
-## Data
+* Find files by file name: `fd`
 
-- JSON: `jq`
-- YAML/XML: `yq`
+* Find files with path name: `fd -p <file-path>`
 
-## Python Tooling
+* List files in a directory: `fd . <directory>`
 
-- Package Management & Virtual Envs: `uv`
-  (fast replacement for pip/pip-tools/virtualenv; use `uv pip install ...`, `uv run ...`)
-- Linting & Formatting: `ruff`
-  (linter + formatter; use `ruff check .`, `ruff format .`)
-- Static Typing: `mypy`
-  (type checking; use `mypy .`)
-- Security: `bandit`
-  (Python security linter; use `bandit -r .`)
-- Testing: `pytest`
-  (test runner; use `pytest -q`, `pytest -k <pattern>` to filter tests)
-- Logging: `loguru`
-  (runtime logging utility; import in code:
+* Find files with extension and pattern: `fd -e <extension> <pattern>`
 
-  ```python
-  from loguru import logger
-  logger.info("message")
-  ```)
+* Find Text: `rg` (ripgrep)
 
-## Notes
+* Find Code Structure: `ast-grep`
 
-- Prefer uv for Python dependency and environment management instead of pip/venv/poetry/pip-tools.
+  * Common languages:
 
-## MCP_SERVERS
+    * Python → `ast-grep --lang python -p '<pattern>'`
 
-Use the dspy_Docs mcp server to get latest docs for DSPy usage.
-Use the lmstudio_docs mcp server to get latest docs for lm-studio api usage.
+    * TypeScript → `ast-grep --lang ts -p '<pattern>'`
 
-## Rules for Best-Practice
+    * Bash → `ast-grep --lang bash -p '<pattern>'`
 
-<file_length_and_structure>
+    * TSX (React) → `ast-grep --lang tsx -p '<pattern>'`
 
-- Prefer maintainability signals over fixed line caps.
-- Split when cognitive complexity > 15, cohesion drops, or fan-in/out spikes.
-- Group by feature. Keep a file to one capability plus its close helpers.
-- Use clear folder names and consistent naming.
+    * JavaScript → `ast-grep --lang js -p '<pattern>'`
 
-</file_length_and_structure>
+    * Rust → `ast-grep --lang rust -p '<pattern>'`
 
-<paradigm_and_style>
+    * JSON → `ast-grep --lang json -p '<pattern>'`
 
-- Use OOP, functional, or data-oriented styles as idiomatic for the language.
-- Favor composition. In OOP, model behavior behind small interfaces or protocols.
-- Prefer pure functions and algebraic data types where natural.
+  * Prefer `ast-grep` over ripgrep/grep unless a plain-text search is explicitly requested.
 
-</paradigm_and_style>
+* Select among matches: pipe to `fzf`
 
-<single_responsibility_principle>
+Data
+----
 
-- Aim for one capability and its close helpers. Avoid micro-files.
-- Enforce through module boundaries and public APIs, not line counts.
+* JSON: `jq`
 
-</single_responsibility_principle>
+* YAML/XML: `yq`
 
-<modular_design>
+Python Tooling
+--------------
 
-- Design modules to be interchangeable, testable, and isolated.
-- Keep public surfaces small. Inject dependencies. Avoid tight coupling.
-- Optimize for replaceability and test seams over premature reuse.
+* Package Management & Virtual Envs: `uv`
+    (fast replacement for pip/pip-tools/virtualenv; use `uv pip install ...`, `uv run ...`)
 
-</modular_design>
+* Linting & Formatting: `ruff`
+    (linter + formatter; use `ruff check .`, `ruff format .`)
 
-<roles_by_platform>
+* Static Typing: `mypy`
+    (type checking; use `mypy .`)
 
-- UI stacks: ViewModel for UI logic, Manager for business logic, Coordinator for navigation and state flow.
-- Backend and CLI: Service, Handler, Repository, Job, Workflow.
-- Do not mix view code with business logic.
+* Security: `bandit`
+    (Python security linter; use `bandit -r .`)
 
-</roles_by_platform>
+* Testing: `pytest`
+    (test runner; use `pytest -q`, `pytest -k <pattern>` to filter tests)
 
-<function_and_class_size>
+* Logging: `loguru`
+    (runtime logging utility; import in code:)
 
-- Size by behavior, not lines.
-- Functions ≤ 20–30 cognitive steps.
-- Split a class when it owns more than one lifecycle or more than one external dependency graph.
+        from loguru import logger
+        logger.info("message")
 
-</function_and_class_size>
+Notes
+-----
 
-<naming_and_readability>
+* Prefer `uv` for Python dependency and environment management instead of pip/venv/poetry/pip-tools.
 
-- Use intention revealing names.
-- Allow domain terms with qualifiers, for example UserData, BillingInfo.
-- Forbid empty suffixes like Helper or Utils unless tightly scoped.
+MCP\_SERVERS
+------------
 
-</naming_and_readability>
+* Use the `dspy_Docs` MCP server to get latest docs for DSPy usage.
 
-<scalability_mindset>
+* Use the `lmstudio_docs` MCP server to get latest docs for LM Studio API usage.
 
-- Build for extension points from day one, such as interfaces, protocols, and constructor injection.
-- Prefer local duplication over unstable abstractions.
-- Document contracts at module seams.
+* * *
 
-</scalability_mindset>
+Proactive TODO/FIXME Annotations
+--------------------------------
 
-<avoid_god_classes>
+Add TODO/FIXME notes as you work—don’t wait for a cleanup pass. Use them to mark: missing tests, unclear contracts, temporary workarounds, performance/security concerns, or places where design choices need follow-up.
 
-- Do not centralize everything in one file or class.
-- Split into UI, State, Handlers, Networking, and other focused parts.
+**Format (single line):**
 
-</avoid_god_classes>
+    TODO(scope|owner): short, imperative next step — why it matters [evidence: <source|cmd|ticket>]
+    FIXME(scope|owner): what is broken — minimal repro or constraint [evidence: <source|cmd|ticket>]
 
-<dependency_injection>
+* `scope|owner` is optional but encouraged (e.g., `ui`, `backend`, `deps`, or a handle like `@alice`).
 
-- Backends: prefer constructor injection. Keep containers optional.
-- Swift, Kotlin, TypeScript: use protocols or interfaces. Inject by initializer or factory.
-- Limit global singletons. Provide test doubles at seams.
+* Keep it ≤120 chars when possible; link to issues for details.
 
-</dependency_injection>
+**Examples (per language comment style):**
+
+    # TODO(domain|@alice): replace naive parse with streaming parser — OOM on large inputs [evidence: profile.txt]
+    # FIXME(api): 500 on empty payload — add validation + test [evidence: pytest -k empty_payload]
+
+
+    // TODO(ui): debounce search — noisy network on fast typing [evidence: trace.log]
+    // FIXME(auth|@bob): refresh token race — guard with mutex [evidence: unit test 'refresh-concurrency']
+
+
+    # TODO(devex): switch to uv task for one-liners [evidence: uv run --help]
+
+### Workflow (aligned with `todos.md`)
+
+1. Gather evidence with the command you used during investigation and reference it in the note’s `[evidence: ...]`.
+
+2. Add the TODO/FIXME in the code at the closest actionable location.
+
+3. Commit with a concise message (e.g., `chore(todos): mark debounce + auth race with evidence`).
+
+4. Before opening a PR, **find and group** all annotations as described in `todos.md` so maintainers can review them together.
+
+### Discover & verify (standard commands)
+
+* Plain-text sweep:
+
+```bash
+        rg -n "TODO|FIXME" | fzf
+```
+
+* Syntax-aware matches (prefer this when patterns are noisy):
+
+```bash
+        ast-grep --lang python -p "// TODO(_) (_) : (_)"
+        ast-grep --lang ts -p "// FIXME(_) : (_)"
+```
+
+* File targeting:
+
+```bash
+        fd -e py -e ts | xargs rg -n "TODO|FIXME"
+```
+
+### PR checklist (copy into your PR template)
+
+* Added TODO/FIXME where follow-ups are needed, with `[evidence: ...]`.
+
+* Ran `rg`/`ast-grep` to list all annotations and grouped them per `todos.md` for reviewers.
+
+* Linked or opened issues for any TODO expected to live >2 sprints.
+
+### Retirement policy
+
+* Convert TODO → issue if it will outlive the current PR.
+
+* Remove the annotation when addressed; reference the commit/issue that resolves it.
+
+-------
+
+Rules for Best-Practice
+
+-------
+
+<file\_length\_and\_structure>
+
+* Prefer maintainability signals over fixed line caps.
+
+* Split when cognitive complexity > 15, cohesion drops, or fan-in/out spikes.
+
+* Group by feature. Keep a file to one capability plus its close helpers.
+
+* Use clear folder names and consistent naming.
+
+</file\_length\_and\_structure>
+
+<paradigm\_and\_style>
+
+* Use OOP, functional, or data-oriented styles as idiomatic for the language.
+
+* Favor composition. In OOP, model behavior behind small interfaces or protocols.
+
+* Prefer pure functions and algebraic data types where natural.
+
+</paradigm\_and\_style>
+
+<single\_responsibility\_principle>
+
+* Aim for one capability and its close helpers. Avoid micro-files.
+
+* Enforce through module boundaries and public APIs, not line counts.
+
+</single\_responsibility\_principle>
+
+<modular\_design>
+
+* Design modules to be interchangeable, testable, and isolated.
+
+* Keep public surfaces small. Inject dependencies. Avoid tight coupling.
+
+* Optimize for replaceability and test seams over premature reuse.
+
+</modular\_design>
+
+<roles\_by\_platform>
+
+* UI stacks: ViewModel for UI logic, Manager for business logic, Coordinator for navigation and state flow.
+
+* Backend and CLI: Service, Handler, Repository, Job, Workflow.
+
+* Do not mix view code with business logic.
+
+</roles\_by\_platform>
+
+<function\_and\_class\_size>
+
+* Size by behavior, not lines.
+
+* Functions ≤ 20–30 cognitive steps.
+
+* Split a class when it owns more than one lifecycle or more than one external dependency graph.
+
+</function\_and\_class\_size>
+
+<naming\_and\_readability>
+
+* Use intention revealing names.
+
+* Allow domain terms with qualifiers, for example `UserData`, `BillingInfo`.
+
+* Forbid empty suffixes like `Helper` or `Utils` unless tightly scoped.
+
+</naming\_and\_readability>
+
+<scalability\_mindset>
+
+* Build for extension points from day one, such as interfaces, protocols, and constructor injection.
+
+* Prefer local duplication over unstable abstractions.
+
+* Document contracts at module seams.
+
+</scalability\_mindset>
+
+<avoid\_god\_classes>
+
+* Do not centralize everything in one file or class.
+
+* Split into UI, State, Handlers, Networking, and other focused parts.
+
+</avoid\_god\_classes>
+
+<dependency\_injection>
+
+* Backends: prefer constructor injection. Keep containers optional.
+
+* Swift, Kotlin, TypeScript: use protocols or interfaces. Inject by initializer or factory.
+
+* Limit global singletons. Provide test doubles at seams.
+
+</dependency\_injection>
 
 <testing>
 
-- Require deterministic seams.
-- Add contract tests for modules and layers.
-- Use snapshot or golden tests for UI and renderers.
+* Require deterministic seams.
+
+* Add contract tests for modules and layers.
+
+* Use snapshot or golden tests for UI and renderers.
 
 </testing>
 
-<architecture_boundaries>
+<architecture\_boundaries>
 
-- Feature oriented packaging with clear dependency direction: UI → app → domain → infra.
-- Stabilize domain modules. Keep infra replaceable.
-- Enforce imports with rules or module maps.
+* Feature oriented packaging with clear dependency direction: UI → app → domain → infra.
 
-</architecture_boundaries>
+* Stabilize domain modules. Keep infra replaceable.
+
+* Enforce imports with rules or module maps.
+
+</architecture\_boundaries>
+
+-------
+
+I aligned the new **Proactive TODO/FIXME Annotations** section with your existing **todos.md** guidance and preserved your original AGENTS.md tooling rubric.
+
+-------

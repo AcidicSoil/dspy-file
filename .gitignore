@@ -13,6 +13,7 @@ dist/
 codefetch/
 .taskmaster/docs/owner-docs/
 !.taskmaster/docs/.ai_context/
+!.taskmaster/docs/owner-docs/TODO/
 /.cursor/
 
 # Logs

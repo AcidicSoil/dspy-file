@@ -4,8 +4,6 @@
 
 [![PyPI](https://img.shields.io/pypi/v/dspyteach.svg?include_prereleases&cacheSeconds=60&t=1)](https://pypi.org/project/dspyteach/)
 [![Downloads](https://img.shields.io/pypi/dm/dspyteach.svg?cacheSeconds=300)](https://pypi.org/project/dspyteach/)
-[![Python](https.img.shields.io/pypi/pyversions/dspyteach.svg?cacheSeconds=300)](https://pypi.org/project/dspyteach/)
-[![License](https://img.shields.io/pypi/l/dspyteach.svg?cacheSeconds=300)](LICENSE)
 [![TestPyPI](https://img.shields.io/badge/TestPyPI-dspyteach-informational?cacheSeconds=300)](https://test.pypi.org/project/dspyteach/)
 [![CI](https://github.com/AcidicSoil/dspy-file/actions/workflows/release.yml/badge.svg)](…)
 
@@ -96,9 +94,13 @@ export DSPYTEACH_API_BASE=http://localhost:1234/v1
 dspyteach path/to/project
 ```
 
+### LM-Studio Usage Notes
+
+[[lm-studio-provider](docs/lm-studio-provider)]
+
 LM Studio must expose its local server before you run the CLI. Start it from the Developer tab inside the LM Studio app or via `lms server start` (see `docs/lm-studio-provider.md` for details); otherwise the CLI will exit early with a connection warning.
 
-**WSL note:** When LM Studio runs on Windows but `dspyteach` runs from WSL, toggle *Serve on local network* in LM Studio's Developer settings so the API binds to `0.0.0.0`. Then point `--api-base` at the Windows host IP (for example `http://<host-ip>:1234/v1`) instead of `localhost`.
+### OpenAI-compatible others usage
 
 For hosted OpenAI-compatible services, set `--provider openai`, supply `--api-base` if needed, and pass an API key either through `--api-key`, `DSPYTEACH_API_KEY`, or the standard `OPENAI_API_KEY`. To keep a local Ollama model running after the CLI finishes, add `--keep-provider-alive`.
 

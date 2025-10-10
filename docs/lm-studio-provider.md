@@ -10,15 +10,37 @@
 
 ---
 
-## debugging calls for troubleshooting
+**WSL note:** When LM Studio runs on Windows but `dspyteach` runs from WSL, toggle *Serve on local network* in LM Studio's Developer settings so the API binds to `0.0.0.0`. Then point `--api-base` at the Windows host IP (for example `http://<host-ip>:1234/v1`) instead of `localhost`.
 
-### Live view + write BOTH stdout/stderr into one file
+---
+
+## Setup .env
+
+```bash
+cp .env.example .env
+```
+
+### debugging calls for troubleshooting
+
+#### Live view + write BOTH stdout/stderr into one file
+
+##### Change the address to the address shown in the developer tab in LM-Studio after toggling "Serve on Local Network"
 
 ```bash
 { yes "" | dspyteach ~/.codex/prompts/temp-prompts \
     --provider lmstudio --model qwen/qwen3-4b-thinking-2507 \
-    --api-base http://<local-ip>:1234/v1 --confirm-each; } \
+    --api-base http://192.168.0.1:1234/v1 --confirm-each; } \
   |& tee "dspyteach.all.$(date +%Y%m%d-%H%M%S).log"
+```
+
+#### Add an alias for dspyteach in your ~/.bashrc or $PROFILE for easier usage
+
+```bash
+{ yes "" | dt -m refactor ~/.gemini/commands \
+    --provider lmstudio \
+    --api-base http://localhost:1234/v1 --confirm-each; } \
+  |& tee "dspyteach.all.$(date +%Y%m%d-%H%M%S).log"
+
 ```
 
 ---
