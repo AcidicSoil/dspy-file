@@ -10,7 +10,7 @@
 
 ---
 
-## TODO
+### TODOS
 
 // TODO * (todo)Option for users to inject /nothink for qwen3 models
 
@@ -32,6 +32,11 @@
 
 ---
 
+// TODO *(todo) Read "./.taskmaster/docs/owner-docs/TODO/TODO-Program context gathering issue.md" for TODO instructions.
+
+// TODO *(todo) see below for description
+
+"""
 Here’s what I want to build:
 
 * **Unify your DSPy tools behind one CLI using Typer.** Keep typed options, map your `Provider` / `AnalysisMode` enums directly, and use env-var fallbacks for flags so existing `DSPYTEACH_*` config still works. Typer is a CLI framework (powered by Click) that supports this pattern cleanly. ([typer.tiangolo.com][1])
@@ -49,3 +54,4 @@ Here’s what I want to build:
 [1]: https://typer.tiangolo.com/?utm_source=chatgpt.com "Typer"
 [2]: https://rich.readthedocs.io/en/latest/introduction.html?utm_source=chatgpt.com "Introduction — Rich 14.1.0 documentation"
 [3]: https://textual.textualize.io/?utm_source=chatgpt.com "Textual"
+"""
