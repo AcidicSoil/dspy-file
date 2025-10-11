@@ -1,4 +1,5 @@
-[QA-Ready] #3
+# gemini-cli_commands-prompt-template_v1
+
 Goal: Produce a parameterized template from {source_text} using positional placeholders and a machine-checkable Arg spec.
 
 Requirements

@@ -1,4 +1,4 @@
-# gemini-cli-command_prompt-template
+# gemini-cli-command_prompt-template_v2
 
 Task: From {prompt_or_md} and {user_context}, synthesize a Gemini CLI custom command TOML that generalizes the task via inferred placeholders.
 
