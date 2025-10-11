@@ -105,3 +105,37 @@ Here’s what I’d consider before you implement the “analyze project → ran
 If you apply the items above, you’ll get a robust, testable pipeline where DSPy improves the **reasoning** parts (synopses, scoring, re-ranking) while your Python does the **work** (scan repo, collect prompts, threshold, table formatting).
 
 ---
+
+Output: Practical recommendation | Constraints: Use official docs; one clear path; concise | Acceptance criteria: (1) Single yes/no recommendation, (2) why, (3) concrete integration plan with citations
+
+**Recommendation (assumption: you want fast iteration + tight integration with your current CLI):**
+Build it **inside the existing repo** as a new internal package and manage it with **uv workspaces**. You can always extract it later. This keeps development + tests cohesive, lets you wire the `rank-prompts` subcommand end-to-end, and still preserves a clean package boundary for future split/publish. ([Astral Docs][1])
+
+**Why this beats a separate repo right now**
+
+* Workspaces give you a mono-repo with multiple packages, shared lock, and clean boundaries; you can add the ranker as a sibling package and depend on it locally. ([Astral Docs][1])
+* You can link the internal package via a workspace member or editable path dep (so changes reflect immediately) while you iterate. ([Astral Docs][2])
+* Publishing later is straightforward: the internal package already has its own `pyproject.toml` with `project.scripts` for the CLI entry point. ([Python Enhancement Proposals (PEPs)][3])
+
+**Concrete plan**
+
+1. **Create a workspace** at your repo root and add a new package (e.g., `prompt_ranking/`).
+
+   * uv workspaces are enabled by adding a `[tool.uv.workspace]` table; each member has its own `pyproject.toml`. ([Astral Docs][1])
+2. **Expose the CLI** from the ranker package with `project.scripts` (e.g., `rank-prompts = "prompt_ranking.cli:main"`). This is the standardized way to publish console entry points. ([Python Enhancement Proposals (PEPs)][3])
+3. **Wire your current CLI** (`dspyteach`) to call into the new package:
+
+   * Add the ranker package as a workspace dependency (or an **editable** path dependency during bring-up). ([Astral Docs][2])
+4. **Keep the escape hatches** for later:
+
+   * If you ever need to lift it out, you can publish to (Test)PyPI and consume normally, or vendor it via `git subtree` (simpler to manage than submodules for most cases). ([Atlassian][4])
+5. **Developer ergonomics**: you can run the tool directly via `uv run` or `uvx` during iteration without global installs. ([Astral Docs][5])
+
+If you want, I’ll sketch the exact workspace layout and the `pyproject.toml` stanzas to add next.
+
+[1]: https://docs.astral.sh/uv/concepts/projects/workspaces/?utm_source=chatgpt.com "Using workspaces | uv - Astral Docs"
+[2]: https://docs.astral.sh/uv/concepts/projects/dependencies/?utm_source=chatgpt.com "Managing dependencies | uv - Astral Docs"
+[3]: https://peps.python.org/pep-0621/?utm_source=chatgpt.com "PEP 621 – Storing project metadata in pyproject.toml"
+[4]: https://www.atlassian.com/git/tutorials/git-subtree?utm_source=chatgpt.com "Git Subtree: Alternative to Git Submodule"
+[5]: https://docs.astral.sh/uv/?utm_source=chatgpt.com "uv - Astral Docs"
+
