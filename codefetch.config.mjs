@@ -5,7 +5,7 @@ export default {
   defaultPromptFile: "default.md",
   excludeFiles: ["**/*.png", "*.mjs"],
   excludeDirs: [
-    "test",
+    "tests",
     "dist",
     ".taskmaster",
     ".cursor",
@@ -18,6 +18,8 @@ export default {
     "scripts",
     "example-data",
     "__pycache__",
-    "data"
-  ]
+    "data",
+    "example-data",
+    "dspyteach.egg-info"
+  ],
 };

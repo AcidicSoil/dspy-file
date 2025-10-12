@@ -1,4 +1,3 @@
-# AGENTS.md
 
 ```markdown
     Goal: Always choose and present the most relevant prompt template for optimizing the user’s question before any response generation.
