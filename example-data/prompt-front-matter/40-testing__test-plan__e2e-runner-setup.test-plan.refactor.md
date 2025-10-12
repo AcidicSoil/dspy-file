@@ -1,0 +1,30 @@
+# E2E Runner Setup
+
+## Metadata
+
+- **Identifier**: e2e-runner-setup
+- **Categories**: setup, configuration, ci-cd
+- **Lifecycle Stage**: setup
+- **Dependencies**: []
+- **Provided Artifacts**: file list, scripts, ci-snippet-code-block
+- **Summary**: Configure E2E runner to achieve setup with fixtures, scripts, and CI integration
+
+---
+
+# E2E Runner Setup
+
+Trigger: /e2e-runner-setup <playwright|cypress>
+
+Purpose: Configure an end-to-end test runner with fixtures and a data sandbox.
+
+**Steps:**
+
+1. Install runner and add config with baseURL, retries, trace/videos on retry only.
+2. Create fixtures for auth, db reset, and network stubs. Add `test:serve` script.
+3. Provide CI job that boots services, runs E2E, uploads artifacts.
+
+**Output format:** file list, scripts, and CI snippet fenced code block.
+
+**Examples:** `/e2e-runner-setup playwright`.
+
+**Notes:** Keep runs under 10 minutes locally; parallelize spec files.

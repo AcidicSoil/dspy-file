@@ -85,10 +85,9 @@ MCP\_SERVERS
 
 * Use the `lmstudio_docs` MCP server to get latest docs for LM Studio API usage.
 
-* * *
+-------
 
-Proactive TODO/FIXME Annotations
---------------------------------
+## Proactive TODO/FIXME Annotations
 
 Add TODO/FIXME notes as you work—don’t wait for a cleanup pass. Use them to mark: missing tests, unclear contracts, temporary workarounds, performance/security concerns, or places where design choices need follow-up.
 
