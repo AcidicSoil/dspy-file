@@ -18,6 +18,7 @@ codefetch/
 !.taskmaster/docs/owner-docs/TODO/
 /.cursor/
 
+
 # Logs
 logs
 *.log

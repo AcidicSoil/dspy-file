@@ -2,6 +2,55 @@
 
 # AGENTS.md — Tool Selection (Python)
 
+## DSPy Framework Playbook (All‑Purpose)
+
+**When to apply:** Use these rules whenever creating or editing DSPy **Signatures**, **Modules**, **Programs**, **Optimizers**, **Metrics**, or **RAG** components in any repository.
+
+**Canonical docs**
+
+- Signatures: <https://dspy.ai/learn/programming/signatures/>
+- Modules (Predict / ChainOfThought / ReAct): <https://dspy.ai/learn/programming/modules/>
+- Optimizers overview: <https://dspy.ai/learn/optimization/optimizers/>
+- MIPROv2: <https://dspy.ai/api/optimizers/MIPROv2/>
+- BootstrapFewShot: <https://dspy.ai/api/optimizers/BootstrapFewShot/>
+- Assertions: <https://dspy.ai/learn/programming/7-assertions/>
+- Metrics: <https://dspy.ai/learn/evaluation/metrics/>
+- RAG tutorial: <https://dspy.ai/tutorials/rag/>
+
+### Quick posture
+
+- **Program, don’t prompt.** Encode task instructions in **Signature docstrings**; compose behavior from Modules. Avoid ad‑hoc long prompts.
+- **Provider‑agnostic.** Support OpenAI/Ollama/Anthropic/etc. by configuring the LM once via `dspy.settings.configure(lm=...)` before building modules.
+- **Composable by default.** Prefer several small Modules over a single monolith; pass data via fields, not globals.
+- **Repro first.** Pin DSPy and core deps in `pyproject.toml`; commit seeds and compile artifacts for deterministic rebuilds.
+
+### Order of operations (universal)
+
+1) **Define Signature(s)** — Put task instructions in the **docstring**; declare inputs with `dspy.InputField`, outputs with `dspy.OutputField`. (Docs: Signatures)
+2) **Compose Modules** — Start with `dspy.Predict`; add `dspy.ChainOfThought` when rationale is useful; use `dspy.ReAct` for tools/agents. (Docs: Modules)
+3) **Choose a Metric** — Make it concrete: e.g., `accuracy`/`F1` (classification), `nDCG@k` (ranking), exact/EM (QA). (Docs: Metrics)
+4) **Add Assertions** — Specify schema+constraints and enable automatic retries on violation. (Docs: Assertions)
+5) **(Optional) Retrieval** — Add a retriever and route evidence to the program for RAG tasks. (Docs: RAG tutorial)
+6) **Optimize** — Run `BootstrapFewShot` to assemble demos → then `MIPROv2` to jointly tune instructions+demos against your metric. (Docs: Optimizers)
+
+### Minimum rules (Codex must enforce)
+
+- **Instruction location:** All task guidance lives in Signature docstrings; no hidden prompts in module code.
+- **LM config timing:** Call `dspy.settings.configure(lm=...)` **before** constructing Modules/Programs so compiles/optimizers see the right LM.
+- **Schema guard (example):** For ranked outputs, emit a 3‑column Markdown table: `prompt | score | rationale`, where `score` ∈ `[0,1]`.
+- **Metrics defaults:** Classification → `accuracy` or `F1`; Ranking → `nDCG@k`; QA → exact match / token‑F1. Document any custom metric in one line.
+- **Tracing & artifacts:** Enable tracing during iteration; persist optimized programs/artifacts after `compile()` for reproducibility.
+- **Small pieces, loosely joined:** Prefer many tiny units; inject dependencies; avoid singletons and global state.
+
+### Environment & compatibility
+
+- **Versioning:** Prefer `dspy>=2` (or latest stable); if upgrading major versions, re‑run optimizers and refresh assertions.
+- **Providers:** Keep provider/model/api‑base in env (e.g., `DSPY_OPENAI_API_KEY`, `OPENAI_API_BASE`, etc.). Do not hardcode keys.
+- **Eval data:** Keep small, labeled eval sets under `eval/` to make metrics and compilation meaningful.
+
+### Long‑form guide (for humans)
+
+See **docs/pre-work-dspy.md** for the expanded checklist and examples
 -------
 
 When you need to call tools from the shell, use this rubric:
@@ -10,64 +59,64 @@ File & Text
 
 -------
 
-* Find files by file name: `fd`
+- Find files by file name: `fd`
 
-* Find files with path name: `fd -p <file-path>`
+- Find files with path name: `fd -p <file-path>`
 
-* List files in a directory: `fd . <directory>`
+- List files in a directory: `fd . <directory>`
 
-* Find files with extension and pattern: `fd -e <extension> <pattern>`
+- Find files with extension and pattern: `fd -e <extension> <pattern>`
 
-* Find Text: `rg` (ripgrep)
+- Find Text: `rg` (ripgrep)
 
-* Find Code Structure: `ast-grep`
+- Find Code Structure: `ast-grep`
 
-  * Common languages:
+  - Common languages:
 
-    * Python → `ast-grep --lang python -p '<pattern>'`
+    - Python → `ast-grep --lang python -p '<pattern>'`
 
-    * TypeScript → `ast-grep --lang ts -p '<pattern>'`
+    - TypeScript → `ast-grep --lang ts -p '<pattern>'`
 
-    * Bash → `ast-grep --lang bash -p '<pattern>'`
+    - Bash → `ast-grep --lang bash -p '<pattern>'`
 
-    * TSX (React) → `ast-grep --lang tsx -p '<pattern>'`
+    - TSX (React) → `ast-grep --lang tsx -p '<pattern>'`
 
-    * JavaScript → `ast-grep --lang js -p '<pattern>'`
+    - JavaScript → `ast-grep --lang js -p '<pattern>'`
 
-    * Rust → `ast-grep --lang rust -p '<pattern>'`
+    - Rust → `ast-grep --lang rust -p '<pattern>'`
 
-    * JSON → `ast-grep --lang json -p '<pattern>'`
+    - JSON → `ast-grep --lang json -p '<pattern>'`
 
-  * Prefer `ast-grep` over ripgrep/grep unless a plain-text search is explicitly requested.
+  - Prefer `ast-grep` over ripgrep/grep unless a plain-text search is explicitly requested.
 
-* Select among matches: pipe to `fzf`
+- Select among matches: pipe to `fzf`
 
 Data
 ----
 
-* JSON: `jq`
+- JSON: `jq`
 
-* YAML/XML: `yq`
+- YAML/XML: `yq`
 
 Python Tooling
 --------------
 
-* Package Management & Virtual Envs: `uv`
+- Package Management & Virtual Envs: `uv`
     (fast replacement for pip/pip-tools/virtualenv; use `uv pip install ...`, `uv run ...`)
 
-* Linting & Formatting: `ruff`
+- Linting & Formatting: `ruff`
     (linter + formatter; use `ruff check .`, `ruff format .`)
 
-* Static Typing: `mypy`
+- Static Typing: `mypy`
     (type checking; use `mypy .`)
 
-* Security: `bandit`
+- Security: `bandit`
     (Python security linter; use `bandit -r .`)
 
-* Testing: `pytest`
+- Testing: `pytest`
     (test runner; use `pytest -q`, `pytest -k <pattern>` to filter tests)
 
-* Logging: `loguru`
+- Logging: `loguru`
     (runtime logging utility; import in code:)
 
         from loguru import logger
@@ -76,14 +125,14 @@ Python Tooling
 Notes
 -----
 
-* Prefer `uv` for Python dependency and environment management instead of pip/venv/poetry/pip-tools.
+- Prefer `uv` for Python dependency and environment management instead of pip/venv/poetry/pip-tools.
 
 MCP\_SERVERS
 ------------
 
-* Use the `dspy_Docs` MCP server to get latest docs for DSPy usage.
+- Use the `dspy_Docs` MCP server to get latest docs for DSPy usage.
 
-* Use the `lmstudio_docs` MCP server to get latest docs for LM Studio API usage.
+- Use the `lmstudio_docs` MCP server to get latest docs for LM Studio API usage.
 
 -------
 
@@ -96,9 +145,9 @@ Add TODO/FIXME notes as you work—don’t wait for a cleanup pass. Use them to 
     TODO(scope|owner): short, imperative next step — why it matters [evidence: <source|cmd|ticket>]
     FIXME(scope|owner): what is broken — minimal repro or constraint [evidence: <source|cmd|ticket>]
 
-* `scope|owner` is optional but encouraged (e.g., `ui`, `backend`, `deps`, or a handle like `@alice`).
+- `scope|owner` is optional but encouraged (e.g., `ui`, `backend`, `deps`, or a handle like `@alice`).
 
-* Keep it ≤120 chars when possible; link to issues for details.
+- Keep it ≤120 chars when possible; link to issues for details.
 
 **Examples (per language comment style):**
 
@@ -124,20 +173,20 @@ Add TODO/FIXME notes as you work—don’t wait for a cleanup pass. Use them to 
 
 ### Discover & verify (standard commands)
 
-* Plain-text sweep:
+- Plain-text sweep:
 
 ```bash
         rg -n "TODO|FIXME" | fzf
 ```
 
-* Syntax-aware matches (prefer this when patterns are noisy):
+- Syntax-aware matches (prefer this when patterns are noisy):
 
 ```bash
         ast-grep --lang python -p "// TODO(_) (_) : (_)"
         ast-grep --lang ts -p "// FIXME(_) : (_)"
 ```
 
-* File targeting:
+- File targeting:
 
 ```bash
         fd -e py -e ts | xargs rg -n "TODO|FIXME"
@@ -145,17 +194,17 @@ Add TODO/FIXME notes as you work—don’t wait for a cleanup pass. Use them to 
 
 ### PR checklist (copy into your PR template)
 
-* Added TODO/FIXME where follow-ups are needed, with `[evidence: ...]`.
+- Added TODO/FIXME where follow-ups are needed, with `[evidence: ...]`.
 
-* Ran `rg`/`ast-grep` to list all annotations and grouped them per `todos.md` for reviewers.
+- Ran `rg`/`ast-grep` to list all annotations and grouped them per `todos.md` for reviewers.
 
-* Linked or opened issues for any TODO expected to live >2 sprints.
+- Linked or opened issues for any TODO expected to live >2 sprints.
 
 ### Retirement policy
 
-* Convert TODO → issue if it will outlive the current PR.
+- Convert TODO → issue if it will outlive the current PR.
 
-* Remove the annotation when addressed; reference the commit/issue that resolves it.
+- Remove the annotation when addressed; reference the commit/issue that resolves it.
 
 -------
 
@@ -165,119 +214,119 @@ Rules for Best-Practice
 
 <file\_length\_and\_structure>
 
-* Prefer maintainability signals over fixed line caps.
+- Prefer maintainability signals over fixed line caps.
 
-* Split when cognitive complexity > 15, cohesion drops, or fan-in/out spikes.
+- Split when cognitive complexity > 15, cohesion drops, or fan-in/out spikes.
 
-* Group by feature. Keep a file to one capability plus its close helpers.
+- Group by feature. Keep a file to one capability plus its close helpers.
 
-* Use clear folder names and consistent naming.
+- Use clear folder names and consistent naming.
 
 </file\_length\_and\_structure>
 
 <paradigm\_and\_style>
 
-* Use OOP, functional, or data-oriented styles as idiomatic for the language.
+- Use OOP, functional, or data-oriented styles as idiomatic for the language.
 
-* Favor composition. In OOP, model behavior behind small interfaces or protocols.
+- Favor composition. In OOP, model behavior behind small interfaces or protocols.
 
-* Prefer pure functions and algebraic data types where natural.
+- Prefer pure functions and algebraic data types where natural.
 
 </paradigm\_and\_style>
 
 <single\_responsibility\_principle>
 
-* Aim for one capability and its close helpers. Avoid micro-files.
+- Aim for one capability and its close helpers. Avoid micro-files.
 
-* Enforce through module boundaries and public APIs, not line counts.
+- Enforce through module boundaries and public APIs, not line counts.
 
 </single\_responsibility\_principle>
 
 <modular\_design>
 
-* Design modules to be interchangeable, testable, and isolated.
+- Design modules to be interchangeable, testable, and isolated.
 
-* Keep public surfaces small. Inject dependencies. Avoid tight coupling.
+- Keep public surfaces small. Inject dependencies. Avoid tight coupling.
 
-* Optimize for replaceability and test seams over premature reuse.
+- Optimize for replaceability and test seams over premature reuse.
 
 </modular\_design>
 
 <roles\_by\_platform>
 
-* UI stacks: ViewModel for UI logic, Manager for business logic, Coordinator for navigation and state flow.
+- UI stacks: ViewModel for UI logic, Manager for business logic, Coordinator for navigation and state flow.
 
-* Backend and CLI: Service, Handler, Repository, Job, Workflow.
+- Backend and CLI: Service, Handler, Repository, Job, Workflow.
 
-* Do not mix view code with business logic.
+- Do not mix view code with business logic.
 
 </roles\_by\_platform>
 
 <function\_and\_class\_size>
 
-* Size by behavior, not lines.
+- Size by behavior, not lines.
 
-* Functions ≤ 20–30 cognitive steps.
+- Functions ≤ 20–30 cognitive steps.
 
-* Split a class when it owns more than one lifecycle or more than one external dependency graph.
+- Split a class when it owns more than one lifecycle or more than one external dependency graph.
 
 </function\_and\_class\_size>
 
 <naming\_and\_readability>
 
-* Use intention revealing names.
+- Use intention revealing names.
 
-* Allow domain terms with qualifiers, for example `UserData`, `BillingInfo`.
+- Allow domain terms with qualifiers, for example `UserData`, `BillingInfo`.
 
-* Forbid empty suffixes like `Helper` or `Utils` unless tightly scoped.
+- Forbid empty suffixes like `Helper` or `Utils` unless tightly scoped.
 
 </naming\_and\_readability>
 
 <scalability\_mindset>
 
-* Build for extension points from day one, such as interfaces, protocols, and constructor injection.
+- Build for extension points from day one, such as interfaces, protocols, and constructor injection.
 
-* Prefer local duplication over unstable abstractions.
+- Prefer local duplication over unstable abstractions.
 
-* Document contracts at module seams.
+- Document contracts at module seams.
 
 </scalability\_mindset>
 
 <avoid\_god\_classes>
 
-* Do not centralize everything in one file or class.
+- Do not centralize everything in one file or class.
 
-* Split into UI, State, Handlers, Networking, and other focused parts.
+- Split into UI, State, Handlers, Networking, and other focused parts.
 
 </avoid\_god\_classes>
 
 <dependency\_injection>
 
-* Backends: prefer constructor injection. Keep containers optional.
+- Backends: prefer constructor injection. Keep containers optional.
 
-* Swift, Kotlin, TypeScript: use protocols or interfaces. Inject by initializer or factory.
+- Swift, Kotlin, TypeScript: use protocols or interfaces. Inject by initializer or factory.
 
-* Limit global singletons. Provide test doubles at seams.
+- Limit global singletons. Provide test doubles at seams.
 
 </dependency\_injection>
 
 <testing>
 
-* Require deterministic seams.
+- Require deterministic seams.
 
-* Add contract tests for modules and layers.
+- Add contract tests for modules and layers.
 
-* Use snapshot or golden tests for UI and renderers.
+- Use snapshot or golden tests for UI and renderers.
 
 </testing>
 
 <architecture\_boundaries>
 
-* Feature oriented packaging with clear dependency direction: UI → app → domain → infra.
+- Feature oriented packaging with clear dependency direction: UI → app → domain → infra.
 
-* Stabilize domain modules. Keep infra replaceable.
+- Stabilize domain modules. Keep infra replaceable.
 
-* Enforce imports with rules or module maps.
+- Enforce imports with rules or module maps.
 
 </architecture\_boundaries>
 
