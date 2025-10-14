@@ -1,0 +1,16 @@
+# path: .gitattributes
+# Default: treat text as text and keep LF endings
+* text=auto eol=lf
+
+# Keep these as CRLF if you actually need Windows line endings
+*.bat eol=crlf
+*.cmd eol=crlf
+*.ps1 eol=crlf
+
+# Binary files (never touch line endings)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf  binary
+*.ico  binary
