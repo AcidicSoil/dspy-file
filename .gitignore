@@ -14,11 +14,11 @@ codefetch/
 .taskmaster/docs/owner-docs/.archive
 .taskmaster/docs/owner-docs/scripts
 .taskmaster/docs/owner-docs/TODO-REVIEW
-!.taskmaster/docs/.ai_context/
-!.taskmaster/docs/owner-docs/TODO/
+.taskmaster/docs/.ai_context/
+.taskmaster/docs/owner-docs/TODO/
 /.cursor/
-
-
+.taskmaster/
+tests/
 # Logs
 logs
 *.log
