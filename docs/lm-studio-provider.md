@@ -1,76 +1,77 @@
+---
+title: "LM Studio Provider Integration"
+description: "Configure dspyteach to use LM Studio's OpenAI-compatible API and verify the connection across macOS, Windows, and WSL."
+---
+
 # LM Studio Provider Integration Notes
 
-- Start the local API server from LM Studio's Developer tab or via `lms server start` (CLI installed with `npx lmstudio install-cli`) to expose local models over HTTP.
-- On Windows + WSL, enable *Serve on local network* under the Developer tab so the API binds to `0.0.0.0`; then call it from WSL using the Windows host IP (for example `http://<host-ip>:1234/v1`).
-- Run `dspyteach` with `--provider lmstudio --model <model-id> --api-base http://localhost:1234/v1` (or set the `DSPYTEACH_PROVIDER`, `DSPYTEACH_MODEL`, and `DSPYTEACH_API_BASE` environment variables) so the CLI targets LM Studio's OpenAI-compatible endpoint.
-- OpenAI SDKs can target LM Studio by switching their base URL to `http://localhost:1234/v1`. Endpoints `/v1/models`, `/v1/responses`, `/v1/chat/completions`, `/v1/completions`, and `/v1/embeddings` are supported, mirroring OpenAI behaviour.
-- The Python OpenAI client works out of the box with `base_url="http://localhost:1234/v1"` and any placeholder API key (e.g. `"lm-studio"`), enabling structured-output workflows identical to OpenAI.
-- A richer beta REST surface is available at `/api/v0/*`, returning chat/completions/embeddings plus model metadata (TTFT, tokens/sec, runtime, quantization). It is enabled by the same server command.
-- Operational flags: choose a custom port with `lms server start --port <port>`, allow browser access with `--cors`, and point CLI utilities to remote hosts using `--host` for commands such as `lms ls`, `lms ps`, `lms load`, and `lms unload`.
+<Steps>
+<Step title="Start the LM Studio API server">
+Run the server from the Developer tab or with the CLI (`npx lmstudio install-cli && lms server start`). This exposes the OpenAI-compatible endpoints on `http://localhost:1234/v1`.
 
----
+<Check>LM Studio shows the model as `Loaded` and the server status indicator is green.</Check>
+</Step>
 
-**WSL note:** When LM Studio runs on Windows but `dspyteach` runs from WSL, toggle *Serve on local network* in LM Studio's Developer settings so the API binds to `0.0.0.0`. Then point `--api-base` at the Windows host IP (for example `http://<host-ip>:1234/v1`) instead of `localhost`.
-
----
-
-## Setup .env
+<Step title="Configure dspyteach to target LM Studio">
+Use CLI flags or environment variables to point the analyzer at the LM Studio endpoint.
 
 ```bash
-cp .env.example .env
+dspyteach ./notes \
+  --provider lmstudio \
+  --model qwen3-4b-instruct-2507@q6_k_xl \
+  --api-base http://localhost:1234/v1
 ```
 
-### debugging calls for troubleshooting
+Alternatively, copy `.env.example` to `.env` and set `DSPYTEACH_PROVIDER`, `DSPYTEACH_MODEL`, and `DSPYTEACH_API_BASE`.
 
-#### Live view + write BOTH stdout/stderr into one file
+<Tip>OpenAI SDKs work unchanged when you pass `base_url="http://localhost:1234/v1"` and a placeholder key such as `"lm-studio"`.</Tip>
+</Step>
 
-##### Change the address to the address shown in the developer tab in LM-Studio after toggling "Serve on Local Network"
+<Step title="Verify the connection">
+Confirm the API responds before running a long batch.
 
 ```bash
-{ yes "" | dspyteach ~/.codex/prompts/temp-prompts \
-    --provider lmstudio --model qwen/qwen3-4b-thinking-2507 \
-    --api-base http://192.168.0.1:1234/v1 --confirm-each; } \
-  |& tee "dspyteach.all.$(date +%Y%m%d-%H%M%S).log"
+curl http://localhost:1234/v1/models
 ```
 
-#### Add an alias for dspyteach in your ~/.bashrc or $PROFILE for easier usage
+<Check>The response lists the models you have loaded in LM Studio.</Check>
+</Step>
+</Steps>
+
+## Troubleshooting and advanced usage
+
+<Warning>
+When LM Studio runs on Windows but you execute `dspyteach` inside WSL, enable **Serve on local network** so the server binds to `0.0.0.0`, then target the Windows host IP (e.g., `http://192.168.0.10:1234/v1`).
+</Warning>
+
+- The CLI accepts additional flags such as `--cors`, `--port`, and `--host` via `lms server start` to expose the API on different interfaces.
+- REST endpoints `/v1/models`, `/v1/chat/completions`, `/v1/completions`, `/v1/responses`, and `/v1/embeddings` mirror OpenAI behavior. A beta surface at `/api/v0/*` adds model metadata (TTFT, tokens/sec, quantization).
+- For the Python OpenAI client, set `from openai import OpenAI; client = OpenAI(base_url="http://localhost:1234/v1", api_key="lm-studio")` to reuse existing structured-output code.
+
+### Capture verbose logs during debugging
 
 ```bash
-{ yes "" | dt -m refactor ~/.gemini/commands \
+{ yes "" | dspyteach ./prompts \
     --provider lmstudio \
-    --api-base http://localhost:1234/v1 --confirm-each; } \
-  |& tee "dspyteach.all.$(date +%Y%m%d-%H%M%S).log"
-
+    --model qwen3-4b-thinking-2507 \
+    --api-base http://localhost:1234/v1 \
+    --confirm-each; } |& tee "dspyteach.$(date +%Y%m%d-%H%M%S).log"
 ```
 
----
+<Tip>Expect the log file to contain both the CLI progress output and any HTTP errors from LM Studio for later review.</Tip>
 
-### **NOTE**
-
-- Using the local-ip only when user is utilizing dspyteach in a WSL environment attempting to make a call to LM-Studio served on Windows host.
-- Other than that, just use the default port
+### Spot-check the chat completion endpoint
 
 ```bash
-curl http://<local-ip>/v1/chat/completions \
+curl http://localhost:1234/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "qwen/qwen3-4b-thinking-2507",
+    "model": "qwen3-4b-thinking-2507",
     "messages": [
-      { "role": "system", "content": "Always answer in rhymes. Today is Thursday" },
-      { "role": "user", "content": "What day is it today?" }
-    ],
-    "temperature": 0.7,
-    "max_tokens": -1,
-    "stream": false
-}'
-
+      { "role": "system", "content": "Always answer in rhymes." },
+      { "role": "user", "content": "Name one benefit of dspyteach." }
+    ]
+  }'
 ```
 
-- **WSL to LM Studio on Windows** – pair the earlier WSL note with a concrete host example:
-
-  ```bash
-  dspyteach ./notes \
-    --provider lmstudio \
-    --api-base http://<windows-host-ip>:1234/v1 \
-    --model qwen3-4b-instruct-2507@q6_k_xl
-  ```
+<Check>A JSON response containing a rhymed assistant message confirms the endpoint is healthy.</Check>

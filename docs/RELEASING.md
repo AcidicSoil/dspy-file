@@ -1,3 +1,8 @@
+---
+title: "Releasing dspyteach"
+description: "Checklist for packaging, verifying, and publishing new dspyteach builds to PyPI and TestPyPI."
+---
+
 # Releasing dspyteach
 
 This guide captures the maintainer workflow for packaging and publishing new versions of `dspyteach`.
@@ -15,6 +20,8 @@ uv build --no-sources
 UV_PUBLISH_TOKEN=... uv publish
 ```
 
+Expected result: `dist/` contains both a wheel and sdist stamped with the new version, and `uv publish` completes without error.
+
 To install the package from a freshly built artifact:
 
 ```bash
@@ -28,6 +35,8 @@ pip install dspyteach
 ```
 
 The `dspyteach` console script (plus the legacy `dspy-file-teaching` alias) will be available after installation.
+
+<Check>Importing `dspyteach` and running `dspyteach --help` should show the CLI version you just published.</Check>
 
 ## CI Publishing
 

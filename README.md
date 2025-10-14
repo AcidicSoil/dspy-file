@@ -26,6 +26,35 @@ The implementation mirrors the multi-file tutorial (`tutorials/multi-llmtxt_gene
 
 ---
 
+## Quick start
+
+1. Confirm Python 3.10–3.12 is available and pull at least one OpenAI-compatible model (Ollama, LM Studio, or a hosted provider).
+2. From the repository root, create an isolated environment and install dependencies:
+
+   ```bash
+   uv venv -p 3.12
+   source .venv/bin/activate
+   uv sync
+   ```
+
+3. Run a smoke test to confirm the CLI is wired up:
+
+   ```bash
+   dspyteach --help
+   ```
+
+   Expected result: the help output lists available flags and displays the active version string.
+
+4. Analyze a sample file to confirm end-to-end output:
+
+   ```bash
+   dspyteach path/to/example.py
+   ```
+
+   Expected result: the command prints a teaching brief to stdout and writes a `.teaching.md` file under `dspy_file/data/`.
+
+---
+
 ## Requirements
 
 - Python 3.10-3.12+
@@ -44,35 +73,25 @@ The implementation mirrors the multi-file tutorial (`tutorials/multi-llmtxt_gene
 
 ---
 
-Install the Python dependencies if you have not already:
-**you dont need all of these commands to correctly install**
+## Installation
 
-### I added multiple install commands and will cleanup later
+### Install with uv (recommended for local development)
 
 ```bash
-uv init
-
 uv venv -p 3.12
 source .venv/bin/activate
-```
-
-```bash
-uv pip install dspy python-dotenv
-```
-
-```bash
 uv sync
 ```
 
-#### will add options to use your preferred model of choice later
+Expected result: the virtual environment contains the project dependencies and `dspyteach --version` reports the local build.
+
+### Install from PyPI
 
 ```bash
-ollama pull hf.co/unsloth/Qwen3-4B-Instruct-2507-GGUF:Q6_K_XL
+pip install dspyteach
 ```
 
-```bash
-uv pip install dspyteach
-```
+Expected result: running `dspyteach --help` prints the CLI usage banner from the installed package.
 
 ### Configure the language model
 
@@ -96,9 +115,9 @@ dspyteach path/to/project
 
 ### LM-Studio Usage Notes
 
-[[lm-studio-provider](docs/lm-studio-provider.md)]
+[LM Studio configuration guide](docs/lm-studio-provider.md)
 
-LM Studio must expose its local server before you run the CLI. Start it from the Developer tab inside the LM Studio app or via `lms server start` (see `docs/lm-studio-provider.md` for details); otherwise the CLI will exit early with a connection warning.
+LM Studio must expose its local server before you run the CLI. Start it from the Developer tab inside the LM Studio app or via `lms server start` (details in the [LM Studio configuration guide](docs/lm-studio-provider.md)); otherwise the CLI will exit early with a connection warning.
 
 ### OpenAI-compatible others usage
 
@@ -112,65 +131,46 @@ Run the CLI to extract a teaching brief from a single file:
 dspyteach path/to/your_file
 ```
 
+Expected result: the CLI prints a markdown teaching brief to stdout and saves a copy under `dspy_file/data/`.
+
 You can also point the CLI at a directory. The tool will recurse by default:
 
 ```bash
 dspyteach path/to/project --glob "**/*.py" --glob "**/*.md"
 ```
 
+Expected result: each matched file produces its own `.teaching.md` report in the output directory.
+
 Use `--non-recursive` to stay in the top-level directory, add `--glob` repeatedly to narrow the target set, and pass `--raw` to print the raw DSPy prediction object instead of the formatted report.
 
 ### Command examples
 
-- **Personal Example**
-
-  ```bash
-  { dt --provider lmstudio -m refactor ./dspy_file/ -ed "prompts/, data/" ;}
-  ```
-
-- **Single file (default settings)**
+- **Analyze a single markdown file**
 
   ```bash
   dspyteach docs/example.md
   ```
 
-- **Directory with multiple glob filters** – quote globs so the shell does not expand them:
+  Expected result: the CLI prints a teaching brief and stores `docs__example.teaching.md` in the output directory.
+
+- **Process a repository while skipping generated assets**
 
   ```bash
-  dspyteach ./course-notes --glob "**/*.py" --glob "**/*.md"
+  dspyteach ./repo \
+    --glob "**/*.py" \
+    --glob "**/*.md" \
+    --exclude-dirs "build/,dist/,data/"
   ```
 
-- **Skip subdirectories entirely** – combine with other flags as needed:
+  Expected result: only `.py` and `.md` files outside the excluded directories are analyzed.
 
-  ```bash
-  dspyteach ./repo --non-recursive --glob "*.md"
-  ```
-
-- **Exclude generated folders** – pass one `--exclude-dirs` per path or provide a comma-separated list with no extra spaces:
-
-  ```bash
-  dspyteach ./dspy_file --exclude-dirs prompts/ --exclude-dirs data/
-  dspyteach ./dspy_file --exclude-dirs "prompts/,data/"
-  ```
-
-  ❌ `dspyteach ./dspy_file -ed prompts/, data/` fails with `unrecognized arguments: data/` because the second path is not attached to `-ed`.
-- **Refactor template generation** – switch modes and optionally choose a bundled prompt by name:
+- **Generate refactor templates instead of teaching briefs**
 
   ```bash
   dspyteach ./repo --mode refactor --prompt refactor_prompt_template
   ```
 
-- **Custom prompt file** – works only in refactor mode; ignored otherwise:
-
-  ```bash
-  dspyteach ./repo --mode refactor --prompt ./my_prompts/api-hardening.md
-  ```
-
-- **Silent raw output for scripting** – useful when piping into other tools:
-
-  ```bash
-  dspyteach src/module.py --raw > /tmp/module.teaching.txt
-  ```
+  Expected result: `.refactor.md` files appear alongside the teaching outputs with guidance tailored to the selected prompt.
 
 Need to double-check files before the model runs? Add `--confirm-each` (alias `--interactive`) to prompt before every file, accepting with Enter or skipping with `n`.
 
