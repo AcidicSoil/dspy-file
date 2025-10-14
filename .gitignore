@@ -1,6 +1,6 @@
 /logs/
 /temp/
-
+.genkit/
 *.env
 .venv/
 
