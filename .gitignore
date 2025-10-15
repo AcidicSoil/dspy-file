@@ -4,6 +4,10 @@
 *.env
 .venv/
 
+.codefetchignore
+
+
+
 .pytest_cache
 __pycache__
 .browser-echo-mcp.json

@@ -39,7 +39,7 @@ class Provider(str, Enum):
 
 DEFAULT_PROVIDER: Final[Provider] = Provider.OLLAMA
 DEFAULT_OUTPUT_DIR = Path(__file__).parent / "data"
-DEFAULT_OLLAMA_MODEL = "hf.co/unsloth/Qwen3-4B-Instruct-2507-GGUF:Q6_K_XL"
+DEFAULT_OLLAMA_MODEL = "hf.co/Mungert/osmosis-mcp-4b-GGUF:Q4_K_M"
 DEFAULT_LMSTUDIO_MODEL = "qwen3-4b-instruct-2507@q6_k_xl"
 DEFAULT_OPENAI_MODEL = "gpt-5"
 OLLAMA_BASE_URL = "http://localhost:11434"
