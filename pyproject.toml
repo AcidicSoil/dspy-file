@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dspyteach"
-version = "0.1.4b2"
+version = "0.1.6b1"
 description = "CLI utility that summarizes single files into teaching briefs using DSPy"
 authors = [{ name = "DSPy File Maintainers" }]
 readme = "README.md"

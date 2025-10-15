@@ -22,7 +22,6 @@ codefetch/
 .taskmaster/docs/owner-docs/TODO/
 /.cursor/
 .taskmaster/
-tests/
 # Logs
 logs
 *.log
