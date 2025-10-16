@@ -6,11 +6,7 @@
 [![Downloads](https://img.shields.io/pypi/dm/dspyteach.svg?cacheSeconds=300)](https://pypi.org/project/dspyteach/)
 [![TestPyPI](https://img.shields.io/badge/TestPyPI-dspyteach-informational?cacheSeconds=300)](https://test.pypi.org/project/dspyteach/)
 [![CI](https://github.com/AcidicSoil/dspy-file/actions/workflows/release.yml/badge.svg)](…)
-[dspy-file](https://github.com/AcidicSoil/dspy-file)
-
-
-
-
+[![Repo](https://img.shields.io/badge/GitHub-AcidicSoil%2Fdspy--file-181717?logo=github)](https://github.com/AcidicSoil/dspy-file)
 
 ---
 
