@@ -6,6 +6,11 @@
 [![Downloads](https://img.shields.io/pypi/dm/dspyteach.svg?cacheSeconds=300)](https://pypi.org/project/dspyteach/)
 [![TestPyPI](https://img.shields.io/badge/TestPyPI-dspyteach-informational?cacheSeconds=300)](https://test.pypi.org/project/dspyteach/)
 [![CI](https://github.com/AcidicSoil/dspy-file/actions/workflows/release.yml/badge.svg)](…)
+[dspy-file](https://github.com/AcidicSoil/dspy-file)
+
+
+
+
 
 ---
 
@@ -101,14 +106,14 @@ The CLI now supports configurable OpenAI-compatible providers in addition to the
 # Use LM Studio's OpenAI-compatible server with its default port
 dspyteach path/to/project \
   --provider lmstudio \
-  --model qwen3-4b-instruct-2507@q6_k_xl \
+  --model osmosis-mcp-4b@q8_0 \
   --api-base http://localhost:1234/v1
 ```
 
 ```bash
 # Environment variable alternative (e.g. inside .env)
 export DSPYTEACH_PROVIDER=lmstudio
-export DSPYTEACH_MODEL=qwen3-4b-instruct-2507@q6_k_xl
+export DSPYTEACH_MODEL=osmosis-mcp-4b@q8_0
 export DSPYTEACH_API_BASE=http://localhost:1234/v1
 dspyteach path/to/project
 ```
