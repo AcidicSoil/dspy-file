@@ -22,7 +22,6 @@ codefetch/
 .taskmaster/docs/owner-docs/TODO/
 /.cursor/
 .taskmaster/
-tests/
 # Logs
 logs
 *.log
@@ -49,3 +48,6 @@ node_modules/
 # Task files
 tasks.json
 tasks/
+cache.db
+
+**/.dspy-cache/
