@@ -262,3 +262,9 @@ Maintainer release steps live in [docs/RELEASING.md](docs/RELEASING.md).
 ```bash
 npx @modelcontextprotocol/inspector --config inspector.config.json
 ```
+
+## ML-Flow
+
+```bash
+uv dt <path> --mlflow --mlflow-experiment "DSPy-Analyses"
+```

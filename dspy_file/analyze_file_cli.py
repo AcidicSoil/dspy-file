@@ -1,5 +1,5 @@
 # path: analyze_file_cli.py
-# analyze_file_cli.py - command line entry point for DSPy file analyzer with optional MLflow tracking
+# analyze_file_cli.py - command line entry point for DSPy file analyzer with MLflow tracking + tracing
 from __future__ import annotations
 
 import argparse
@@ -375,7 +375,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--mlflow",
         action="store_true",
-        help="Enable MLflow tracking of params, metrics, and artifacts.",
+        help="Enable MLflow tracking of params, metrics, artifacts, and traces.",
     )
     parser.add_argument(
         "--mlflow-experiment",
@@ -431,7 +431,14 @@ def analyze_path(
             continue
 
         try:
-            content = read_file_content(target)
+            # --- trace: read file ---
+            if mlflow_enabled and mlflow is not None and hasattr(mlflow, "start_span"):
+                with mlflow.start_span(
+                    name="read_file", attributes={"path": str(target)}
+                ):
+                    content = read_file_content(target)
+            else:
+                content = read_file_content(target)
         except (FileNotFoundError, UnicodeDecodeError) as exc:
             print(f"Skipping {target}: {exc}")
             exit_code = 1
@@ -445,7 +452,19 @@ def analyze_path(
 
         print(f"\n=== Analyzing {target} ===")
         t0 = time.perf_counter()
-        prediction = analyzer(file_path=str(target), file_content=content)
+        # --- trace: model inference ---
+        if mlflow_enabled and mlflow is not None and hasattr(mlflow, "start_span"):
+            with mlflow.start_span(
+                name="dspy_inference",
+                attributes={
+                    "file": str(relative),
+                    "mode": mode.value,
+                    "bytes_in": len(content.encode("utf-8", errors="ignore")),
+                },
+            ):
+                prediction = analyzer(file_path=str(target), file_content=content)
+        else:
+            prediction = analyzer(file_path=str(target), file_content=content)
         dt_ms = int((time.perf_counter() - t0) * 1000)
 
         if raw:
@@ -455,16 +474,29 @@ def analyze_path(
             output_text = render_prediction(prediction, mode=mode.render_key)
             print(output_text, end="")
 
-        output_path = _write_output(
-            target,
-            output_text,
-            root=root,
-            output_dir=output_dir,
-            suffix=mode.file_suffix,
-        )
+        # --- trace: write output ---
+        if mlflow_enabled and mlflow is not None and hasattr(mlflow, "start_span"):
+            with mlflow.start_span(
+                name="write_output", attributes={"file": str(relative)}
+            ):
+                output_path = _write_output(
+                    target,
+                    output_text,
+                    root=root,
+                    output_dir=output_dir,
+                    suffix=mode.file_suffix,
+                )
+        else:
+            output_path = _write_output(
+                target,
+                output_text,
+                root=root,
+                output_dir=output_dir,
+                suffix=mode.file_suffix,
+            )
         print(f"Saved {mode.output_description} to {output_path}")
 
-        if mlflow_enabled and mlflow is not None:  # type: ignore[truthy-bool]
+        if mlflow_enabled and mlflow is not None:
             # Nested run per analyzed file
             run_name = str(relative)
             with mlflow.start_run(nested=True, run_name=run_name):  # type: ignore[attr-defined]
@@ -492,6 +524,18 @@ def analyze_path(
                 # Tags and artifact
                 mlflow.set_tags({"analysis_mode": mode.value})  # type: ignore[attr-defined]
                 mlflow.log_artifact(str(output_path))  # type: ignore[attr-defined]
+
+                # Also attach per-file metadata at the trace level if tracing is active.
+                if hasattr(mlflow, "update_current_trace"):
+                    try:
+                        mlflow.update_current_trace(
+                            tags={
+                                "file": str(relative),
+                                "analysis_mode": mode.value,
+                            }
+                        )
+                    except Exception:
+                        pass
 
     return exit_code
 
@@ -572,45 +616,101 @@ def main(argv: list[str] | None = None) -> int:
                 )
             exclude_dirs = parsed or None
 
-        if mlflow_enabled and mlflow is not None:  # type: ignore[truthy-bool]
+        # --- MLflow parent run + trace for the whole invocation ---
+        if mlflow_enabled and mlflow is not None:
             if args.mlflow_experiment:
                 try:
                     mlflow.set_experiment(args.mlflow_experiment)  # type: ignore[attr-defined]
                 except Exception as exc:  # pragma: no cover - robust handling
                     print(f"Warning: failed to set MLflow experiment: {exc}")
-            # Parent run for the whole invocation
+
+            # Create a parent trace if the tracing API is available
+            tracing_supported = hasattr(mlflow, "start_trace") and hasattr(
+                mlflow, "update_current_trace"
+            )
             run_name = f"analyze:{Path(args.path).name}"
-            with mlflow.start_run(run_name=run_name):  # type: ignore[attr-defined]
-                mlflow.set_tags(  # type: ignore[attr-defined]
-                    {
-                        "provider": provider.value,
-                        "mode": analysis_mode.value,
-                        "api_base": str(bool(api_base)),
-                    }
-                )
-                mlflow.log_params(  # type: ignore[attr-defined]
-                    {
-                        "provider": provider.value,
-                        "model": model_name,
-                        "api_base": api_base or "",
-                        "path": args.path,
-                        "output_dir": str(output_dir) if output_dir else "",
-                        "recursive": str(not args.non_recursive),
-                    }
-                )
-                exit_code = analyze_path(
-                    args.path,
-                    raw=args.raw,
-                    recursive=not args.non_recursive,
-                    include_globs=args.include_globs,
-                    confirm_each=args.confirm_each,
-                    exclude_dirs=exclude_dirs,
-                    output_dir=output_dir,
-                    mode=analysis_mode,
-                    prompt_text=prompt_text,
-                    mlflow_enabled=True,
-                    root_hint=Path(args.path).expanduser().resolve(),
-                )
+
+            if tracing_supported:
+                with mlflow.start_trace(  # type: ignore[attr-defined]
+                    name="analyze_file_cli",
+                    inputs={"path": args.path, "mode": analysis_mode.value},
+                ):
+                    # Tag the current trace with context
+                    try:
+                        mlflow.update_current_trace(
+                            tags={
+                                "provider": provider.value,
+                                "api_base_set": str(bool(api_base)),
+                            }
+                        )
+                    except Exception:
+                        pass
+
+                    # Parent run for the whole invocation
+                    with mlflow.start_run(run_name=run_name):  # type: ignore[attr-defined]
+                        mlflow.set_tags(  # type: ignore[attr-defined]
+                            {
+                                "provider": provider.value,
+                                "mode": analysis_mode.value,
+                                "api_base": str(bool(api_base)),
+                            }
+                        )
+                        mlflow.log_params(  # type: ignore[attr-defined]
+                            {
+                                "provider": provider.value,
+                                "model": model_name,
+                                "api_base": api_base or "",
+                                "path": args.path,
+                                "output_dir": str(output_dir) if output_dir else "",
+                                "recursive": str(not args.non_recursive),
+                            }
+                        )
+                        exit_code = analyze_path(
+                            args.path,
+                            raw=args.raw,
+                            recursive=not args.non_recursive,
+                            include_globs=args.include_globs,
+                            confirm_each=args.confirm_each,
+                            exclude_dirs=exclude_dirs,
+                            output_dir=output_dir,
+                            mode=analysis_mode,
+                            prompt_text=prompt_text,
+                            mlflow_enabled=True,
+                            root_hint=Path(args.path).expanduser().resolve(),
+                        )
+            else:
+                # Fallback: no tracing, only standard Tracking
+                with mlflow.start_run(run_name=run_name):  # type: ignore[attr-defined]
+                    mlflow.set_tags(  # type: ignore[attr-defined]
+                        {
+                            "provider": provider.value,
+                            "mode": analysis_mode.value,
+                            "api_base": str(bool(api_base)),
+                        }
+                    )
+                    mlflow.log_params(  # type: ignore[attr-defined]
+                        {
+                            "provider": provider.value,
+                            "model": model_name,
+                            "api_base": api_base or "",
+                            "path": args.path,
+                            "output_dir": str(output_dir) if output_dir else "",
+                            "recursive": str(not args.non_recursive),
+                        }
+                    )
+                    exit_code = analyze_path(
+                        args.path,
+                        raw=args.raw,
+                        recursive=not args.non_recursive,
+                        include_globs=args.include_globs,
+                        confirm_each=args.confirm_each,
+                        exclude_dirs=exclude_dirs,
+                        output_dir=output_dir,
+                        mode=analysis_mode,
+                        prompt_text=prompt_text,
+                        mlflow_enabled=True,
+                        root_hint=Path(args.path).expanduser().resolve(),
+                    )
         else:
             exit_code = analyze_path(
                 args.path,
