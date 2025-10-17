@@ -1,3 +1,4 @@
+# path: analyze_file_cli.py
 # analyze_file_cli.py - command line entry point for DSPy file analyzer
 from __future__ import annotations
 
@@ -39,8 +40,8 @@ class Provider(str, Enum):
 
 DEFAULT_PROVIDER: Final[Provider] = Provider.OLLAMA
 DEFAULT_OUTPUT_DIR = Path(__file__).parent / "data"
-DEFAULT_OLLAMA_MODEL = "hf.co/Mungert/osmosis-mcp-4b-GGUF:Q4_K_M"
-DEFAULT_LMSTUDIO_MODEL = "qwen3-4b-instruct-2507@q6_k_xl"
+DEFAULT_OLLAMA_MODEL = "hf.co/Mungert/osmosis-mcp-4b-GGUF:Q5_K_M"
+DEFAULT_LMSTUDIO_MODEL = "osmosis-mcp-4b@q8_0"
 DEFAULT_OPENAI_MODEL = "gpt-5"
 OLLAMA_BASE_URL = "http://localhost:11434"
 LMSTUDIO_BASE_URL = "http://localhost:1234/v1"
@@ -52,7 +53,9 @@ PROVIDER_DEFAULTS: Final[dict[Provider, dict[str, Any]]] = {
 }
 
 
-def _resolve_option(cli_value: str | None, env_var: str, default: str | None = None) -> str | None:
+def _resolve_option(
+    cli_value: str | None, env_var: str, default: str | None = None
+) -> str | None:
     """Return the CLI value if provided, otherwise fall back to env or default."""
 
     if cli_value is not None:
@@ -67,7 +70,11 @@ def _normalize_model_name(provider: Provider, raw_model: str) -> str:
     """Attach the appropriate provider prefix to the model identifier."""
 
     if provider is Provider.OLLAMA:
-        return raw_model if raw_model.startswith("ollama_chat/") else f"ollama_chat/{raw_model}"
+        return (
+            raw_model
+            if raw_model.startswith("ollama_chat/")
+            else f"ollama_chat/{raw_model}"
+        )
 
     if raw_model.startswith("openai/"):
         return raw_model
@@ -106,7 +113,9 @@ class ProviderConnectivityError(RuntimeError):
     """Raised when a provider cannot be reached before running analysis."""
 
 
-def _probe_openai_provider(api_base: str, api_key: str | None, *, timeout: float = 3.0) -> None:
+def _probe_openai_provider(
+    api_base: str, api_key: str | None, *, timeout: float = 3.0
+) -> None:
     """Make a lightweight request against an OpenAI-compatible endpoint."""
 
     endpoint = api_base.rstrip("/") + "/models"
@@ -122,7 +131,9 @@ def _probe_openai_provider(api_base: str, api_key: str | None, *, timeout: float
         ) from exc
     except urlerror.URLError as exc:
         reason = getattr(exc, "reason", exc)
-        raise ProviderConnectivityError(f"Failed to reach {endpoint}: {reason}") from exc
+        raise ProviderConnectivityError(
+            f"Failed to reach {endpoint}: {reason}"
+        ) from exc
 
 
 def stop_ollama_model(model_name: str) -> None:
@@ -154,7 +165,8 @@ class AnalysisMode(str, Enum):
 
     @property
     def file_suffix(self) -> str:
-        return ".teaching.md" if self is AnalysisMode.TEACH else ".refactor.md"
+        # No suffixing. Preserve original filename.
+        return ""
 
 
 def _prompt_for_template_selection(prompts: list[PromptTemplate]) -> PromptTemplate:
@@ -197,35 +209,33 @@ def _write_output(
     content: str,
     *,
     root: Path | None = None,
-    output_dir: Path = DEFAULT_OUTPUT_DIR,
-    suffix: str = ".teaching.md",
+    output_dir: Path | None = None,
+    suffix: str = "",
 ) -> Path:
-    """Persist analyzer output under the data directory with de-duplicated file names."""
+    """Write output to the same filename and directory layout as the analyzed path.
 
-    output_dir.mkdir(parents=True, exist_ok=True)
+    If output_dir is provided, mirror the relative directory structure inside it and
+    keep the original filename. Otherwise overwrite the source file in place.
+    """
 
     try:
-        relative_path = source_path.relative_to(root) if root else Path(source_path.name)
+        relative_path = (
+            source_path.relative_to(root) if root else Path(source_path.name)
+        )
     except ValueError:
         relative_path = Path(source_path.name)
 
-    slug_parts = [part.replace("/", "_") for part in relative_path.with_suffix("").parts]
-    slug = "__".join(slug_parts) if slug_parts else source_path.stem
-    base_name = f"{slug}{suffix}"
-    output_path = output_dir / base_name
-
-    counter = 1
-    while output_path.exists():
-        stem = Path(base_name).stem
-        extension = Path(base_name).suffix
-        output_path = output_dir / f"{stem}-{counter}{extension}"
-        counter += 1
+    if output_dir:
+        dest_path = (output_dir / relative_path).resolve()
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        dest_path = source_path
 
     if not content.endswith("\n"):
         content = content + "\n"
-    output_path.write_text(content, encoding="utf-8")
-    return output_path
 
+    dest_path.write_text(content, encoding="utf-8")
+    return dest_path
 
 
 def _confirm_analyze(path: Path) -> bool:
@@ -274,10 +284,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--api-base",
         dest="api_base",
         default=None,
-        help=(
-            "Override the OpenAI-compatible API base URL "
-            "(env: DSPYTEACH_API_BASE)."
-        ),
+        help=("Override the OpenAI-compatible API base URL (env: DSPYTEACH_API_BASE)."),
     )
     parser.add_argument(
         "--api-key",
@@ -355,9 +362,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--output-dir",
         dest="output_dir",
         default=None,
-        help=(
-            "Directory to write teaching reports into (default: module data directory)."
-        ),
+        help=("Directory to write outputs. If omitted, overwrite files in place."),
     )
     return parser
 
@@ -370,7 +375,7 @@ def analyze_path(
     include_globs: list[str] | None,
     confirm_each: bool,
     exclude_dirs: list[str] | None,
-    output_dir: Path,
+    output_dir: Path | None,
     mode: AnalysisMode,
     prompt_text: str | None = None,
 ) -> int:
@@ -436,7 +441,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    provider_value = _resolve_option(args.provider, "DSPYTEACH_PROVIDER", DEFAULT_PROVIDER.value)
+    provider_value = _resolve_option(
+        args.provider, "DSPYTEACH_PROVIDER", DEFAULT_PROVIDER.value
+    )
     try:
         provider = Provider(provider_value)
     except ValueError:  # pragma: no cover - argparse handles this
@@ -481,19 +488,18 @@ def main(argv: list[str] | None = None) -> int:
         elif args.prompt:
             print("Warning: --prompt is ignored outside refactor mode.")
         output_dir = (
-            Path(args.output_dir).expanduser().resolve()
-            if args.output_dir
-            else DEFAULT_OUTPUT_DIR
+            Path(args.output_dir).expanduser().resolve() if args.output_dir else None
         )
-        print(f"Writing {analysis_mode.output_description}s to {output_dir}")
+        if output_dir:
+            print(f"Writing {analysis_mode.output_description}s to {output_dir}")
+        else:
+            print(f"Writing {analysis_mode.output_description}s in place")
         exclude_dirs = None
         if args.exclude_dirs:
             parsed: list[str] = []
             for entry in args.exclude_dirs:
                 parsed.extend(
-                    segment.strip()
-                    for segment in entry.split(",")
-                    if segment.strip()
+                    segment.strip() for segment in entry.split(",") if segment.strip()
                 )
             exclude_dirs = parsed or None
         try:
@@ -509,7 +515,9 @@ def main(argv: list[str] | None = None) -> int:
                 prompt_text=prompt_text,
             )
         except Exception as exc:
-            if LiteLLMInternalServerError and isinstance(exc, LiteLLMInternalServerError):
+            if LiteLLMInternalServerError and isinstance(
+                exc, LiteLLMInternalServerError
+            ):
                 message = str(exc)
                 if exc.__cause__:
                     message = f"{message} (cause: {exc.__cause__})"

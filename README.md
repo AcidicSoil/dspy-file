@@ -189,6 +189,29 @@ dspyteach path/to/project --mode refactor --glob "**/*.md"
 
 ---
 
+---
+
+## **clarity on what happens when in teaching mode**
+
+### both of these commands shown below would create new directories in the path outside the cwd that you ran the commands from and the directories would be the following: so in this case it would be exactly ["C:\Users\user\projects\WIP\NAME-OF-CWD + (the new files it creates which will be...)dspyteach\teach\data\00-ideation\architecture\adr-new.architecture.md]"
+
+#### "00-ideation\architecture\adr-new.architecture.md" are unique to my personal setup so your output would be a mirrored version of the target path recursively
+
+directory analyzed --> "~\projects\WIP\ .__pre-temp-prompts\temp-prompts-organized" so all under temp-prompts-organized are analyzed unless flag is passed to do otherwise, ie., non-recursive or -i AKA --interactive (file by file of target path).
+
+---
+
+```bash
+dt -m refactor C:\Users\user\projects\WIP\.__pre-temp-prompts\temp-prompts-organized\ --provider lmstudio --api-base <http://127.0.0.1:1234/v1> -ed prompt-front-matter/ -o ..\dspyteach\data -i
+```
+
+```bash
+dt C:\Users\user\projects\WIP\.__pre-temp-prompts\temp-prompts-organized\ --provider lmstudio --api-base <http://127.0.0.1:1234/v1> -ed prompt-front-matter/ -o ..\dspyteach\teach\data -i
+```
+
+---
+
+
 ## Additional Information
 
 The CLI reuses the same file resolution pipeline but feeds each document through the bundled `dspy-file_refactor-prompt_template.md` instructions (packaged under `dspy_file/prompts/`), saving `.refactor.md` files alongside the teaching reports. Teaching briefs remain the default (`--mode teach`), so existing workflows continue to work unchanged.
