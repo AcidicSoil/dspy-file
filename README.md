@@ -258,3 +258,7 @@ Maintainer release steps live in [docs/RELEASING.md](docs/RELEASING.md).
 - If the program cannot connect to Ollama, verify that the server is running on `http://localhost:11434` and the requested model has been pulled.
 - When you see `ollama command not found`, ensure the `ollama` binary is on your `PATH`.
 - For encoding errors, the helper already falls back to `latin-1`, but you can add more fallbacks in `file_helpers.read_file_content` if needed.
+
+```bash
+npx @modelcontextprotocol/inspector --config inspector.config.json
+```

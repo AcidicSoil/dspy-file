@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "mcpdoc": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "mcpdoc",
+        "mcpdoc",
+        "--urls",
+        "LocalDocs:/mnt/c/Users/user/llms-txt/rpg_tool/rpg_tool-llms-full.txt",
+        "--urls",
+        "LocalDocs:/mnt/c/Users/user/llms-txt/rpg_tool/rpg_tool-llms.txt",
+        "--allowed-domains",
+        "*",
+        "--transport",
+        "stdio"
+      ]
+    }
+  }
+}
