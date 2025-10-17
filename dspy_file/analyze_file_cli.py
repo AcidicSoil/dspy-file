@@ -1,11 +1,12 @@
 # path: analyze_file_cli.py
-# analyze_file_cli.py - command line entry point for DSPy file analyzer
+# analyze_file_cli.py - command line entry point for DSPy file analyzer with optional MLflow tracking
 from __future__ import annotations
 
 import argparse
 import os
 import subprocess
 import sys
+import time
 from enum import Enum
 from urllib import error as urlerror
 from urllib import request
@@ -24,6 +25,12 @@ try:  # dspy depends on litellm; guard in case import path changes.
     from litellm.exceptions import InternalServerError as LiteLLMInternalServerError
 except Exception:  # pragma: no cover - defensive fallback if litellm API shifts
     LiteLLMInternalServerError = None  # type: ignore[assignment]
+
+# Optional MLflow import. Enabled only with --mlflow to ensure no behavior change by default.
+try:  # pragma: no cover - optional dependency
+    import mlflow  # type: ignore
+except Exception:  # pragma: no cover - keep CLI usable without MLflow installed
+    mlflow = None  # type: ignore
 
 
 class Provider(str, Enum):
@@ -364,6 +371,18 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=("Directory to write outputs. If omitted, overwrite files in place."),
     )
+    # --- MLflow options ---
+    parser.add_argument(
+        "--mlflow",
+        action="store_true",
+        help="Enable MLflow tracking of params, metrics, and artifacts.",
+    )
+    parser.add_argument(
+        "--mlflow-experiment",
+        dest="mlflow_experiment",
+        default=None,
+        help="Name of the MLflow experiment to use or create when --mlflow is set.",
+    )
     return parser
 
 
@@ -378,6 +397,8 @@ def analyze_path(
     output_dir: Path | None,
     mode: AnalysisMode,
     prompt_text: str | None = None,
+    mlflow_enabled: bool = False,
+    root_hint: Path | None = None,
 ) -> int:
     """Run the DSPy pipeline and render results to stdout for one or many files."""
 
@@ -398,7 +419,10 @@ def analyze_path(
         analyzer = FileTeachingAnalyzer()
     else:
         analyzer = FileRefactorAnalyzer(template_text=prompt_text)
-    root: Path | None = resolved if resolved.is_dir() else None
+
+    root: Path | None = (
+        root_hint if root_hint else (resolved if resolved.is_dir() else None)
+    )
 
     exit_code = 0
     for target in targets:
@@ -413,8 +437,16 @@ def analyze_path(
             exit_code = 1
             continue
 
+        # Compute relative path for logging.
+        try:
+            relative = target.relative_to(root) if root else Path(target.name)
+        except Exception:
+            relative = Path(target.name)
+
         print(f"\n=== Analyzing {target} ===")
+        t0 = time.perf_counter()
         prediction = analyzer(file_path=str(target), file_content=content)
+        dt_ms = int((time.perf_counter() - t0) * 1000)
 
         if raw:
             output_text = repr(prediction)
@@ -431,6 +463,35 @@ def analyze_path(
             suffix=mode.file_suffix,
         )
         print(f"Saved {mode.output_description} to {output_path}")
+
+        if mlflow_enabled and mlflow is not None:  # type: ignore[truthy-bool]
+            # Nested run per analyzed file
+            run_name = str(relative)
+            with mlflow.start_run(nested=True, run_name=run_name):  # type: ignore[attr-defined]
+                # Params
+                mlflow.log_params(  # type: ignore[attr-defined]
+                    {
+                        "path": str(relative),
+                        "raw": str(raw),
+                        "confirm_each": str(confirm_each),
+                        "recursive": str(recursive),
+                        "globs": ",".join(include_globs or []),
+                        "excluded_dirs": ",".join(exclude_dirs or []),
+                    }
+                )
+                # Metrics
+                in_bytes = len(content.encode("utf-8", errors="ignore"))
+                out_chars = len(output_text)
+                mlflow.log_metrics(  # type: ignore[attr-defined]
+                    {
+                        "input_bytes": float(in_bytes),
+                        "output_chars": float(out_chars),
+                        "duration_ms": float(dt_ms),
+                    }
+                )
+                # Tags and artifact
+                mlflow.set_tags({"analysis_mode": mode.value})  # type: ignore[attr-defined]
+                mlflow.log_artifact(str(output_path))  # type: ignore[attr-defined]
 
     return exit_code
 
@@ -475,6 +536,14 @@ def main(argv: list[str] | None = None) -> int:
     configure_model(provider, model_name, api_base=api_base, api_key=api_key)
     stop_model: str | None = model_name if provider is Provider.OLLAMA else None
 
+    # Evaluate MLflow configuration
+    mlflow_enabled = bool(args.mlflow)
+    if mlflow_enabled and mlflow is None:  # type: ignore[truthy-bool]
+        print(
+            "Warning: --mlflow requested but MLflow is not installed. Disabling MLflow."
+        )
+        mlflow_enabled = False
+
     exit_code = 0
     try:
         analysis_mode = AnalysisMode(args.mode)
@@ -502,7 +571,47 @@ def main(argv: list[str] | None = None) -> int:
                     segment.strip() for segment in entry.split(",") if segment.strip()
                 )
             exclude_dirs = parsed or None
-        try:
+
+        if mlflow_enabled and mlflow is not None:  # type: ignore[truthy-bool]
+            if args.mlflow_experiment:
+                try:
+                    mlflow.set_experiment(args.mlflow_experiment)  # type: ignore[attr-defined]
+                except Exception as exc:  # pragma: no cover - robust handling
+                    print(f"Warning: failed to set MLflow experiment: {exc}")
+            # Parent run for the whole invocation
+            run_name = f"analyze:{Path(args.path).name}"
+            with mlflow.start_run(run_name=run_name):  # type: ignore[attr-defined]
+                mlflow.set_tags(  # type: ignore[attr-defined]
+                    {
+                        "provider": provider.value,
+                        "mode": analysis_mode.value,
+                        "api_base": str(bool(api_base)),
+                    }
+                )
+                mlflow.log_params(  # type: ignore[attr-defined]
+                    {
+                        "provider": provider.value,
+                        "model": model_name,
+                        "api_base": api_base or "",
+                        "path": args.path,
+                        "output_dir": str(output_dir) if output_dir else "",
+                        "recursive": str(not args.non_recursive),
+                    }
+                )
+                exit_code = analyze_path(
+                    args.path,
+                    raw=args.raw,
+                    recursive=not args.non_recursive,
+                    include_globs=args.include_globs,
+                    confirm_each=args.confirm_each,
+                    exclude_dirs=exclude_dirs,
+                    output_dir=output_dir,
+                    mode=analysis_mode,
+                    prompt_text=prompt_text,
+                    mlflow_enabled=True,
+                    root_hint=Path(args.path).expanduser().resolve(),
+                )
+        else:
             exit_code = analyze_path(
                 args.path,
                 raw=args.raw,
@@ -513,23 +622,24 @@ def main(argv: list[str] | None = None) -> int:
                 output_dir=output_dir,
                 mode=analysis_mode,
                 prompt_text=prompt_text,
+                mlflow_enabled=False,
+                root_hint=Path(args.path).expanduser().resolve(),
             )
-        except Exception as exc:
-            if LiteLLMInternalServerError and isinstance(
-                exc, LiteLLMInternalServerError
-            ):
-                message = str(exc)
-                if exc.__cause__:
-                    message = f"{message} (cause: {exc.__cause__})"
-                print("Model request failed while generating the report.")
-                print(f"Details: {message}")
-                if provider is Provider.LMSTUDIO:
-                    print(
-                        "Confirm the LM Studio server is running and reachable at "
-                        f"{api_base}."
-                    )
-                return 1
-            raise
+    except Exception as exc:
+        if LiteLLMInternalServerError and isinstance(exc, LiteLLMInternalServerError):
+            message = str(exc)
+            if exc.__cause__:
+                message = f"{message} (cause: {exc.__cause__})"
+            print("Model request failed while generating the report.")
+            print(f"Details: {message}")
+            if provider is Provider.LMSTUDIO:
+                print(
+                    "Confirm the LM Studio server is running and reachable at "
+                    f"{api_base}."
+                )
+            return 1
+        # Maintain original behavior: re-raise for unexpected exceptions
+        raise
     except (FileNotFoundError, IsADirectoryError) as exc:
         parser.print_usage(sys.stderr)
         print(f"{parser.prog}: error: {exc}", file=sys.stderr)
